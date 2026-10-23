@@ -9,7 +9,7 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phase 1 is the project scaffold: placeholder screens and empty services only.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 2 are done: decisions, the project scaffold, and the data layer (six SQLite tables via drift, with repositories and tests). The screens are still placeholders.
 
 ## Requirements
 
@@ -24,6 +24,16 @@ flutter pub get
 flutter devices      # your phone should be listed
 flutter run
 ```
+
+## Generated code
+
+The drift database code (`app_database.g.dart`) is committed. After changing `lib/app/data/db/tables.dart`, regenerate it:
+
+```bash
+dart run build_runner build
+```
+
+In debug builds, the Home placeholder has a **Seed sample tasks** button. Tap a task to move it open, doing, done; long-press to delete it.
 
 ## Check
 

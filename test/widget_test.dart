@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
+import 'package:do_it_or_dodge_it/app/data/db/app_database.dart';
 import 'package:do_it_or_dodge_it/app/routes/app_routes.dart';
 import 'package:do_it_or_dodge_it/app/services/background_service.dart';
 import 'package:do_it_or_dodge_it/app/services/gemma_service.dart';
@@ -9,11 +10,20 @@ import 'package:do_it_or_dodge_it/app/services/predictor_service.dart';
 import 'package:do_it_or_dodge_it/app/services/share_service.dart';
 import 'package:do_it_or_dodge_it/main.dart';
 
+import 'data/test_database.dart';
+
 void main() {
-  tearDown(Get.reset);
+  late AppDatabase db;
+
+  setUp(() => db = createTestDatabase());
+
+  tearDown(() async {
+    Get.reset();
+    await db.close();
+  });
 
   testWidgets('registers every service at startup', (tester) async {
-    await tester.pumpWidget(const DoItOrDodgeItApp());
+    await tester.pumpWidget(DoItOrDodgeItApp(database: db));
     await tester.pumpAndSettle();
 
     expect(Get.isRegistered<GemmaService>(), isTrue);
@@ -24,7 +34,7 @@ void main() {
   });
 
   testWidgets('every module route opens its placeholder', (tester) async {
-    await tester.pumpWidget(const DoItOrDodgeItApp());
+    await tester.pumpWidget(DoItOrDodgeItApp(database: db));
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsWidgets);
 
