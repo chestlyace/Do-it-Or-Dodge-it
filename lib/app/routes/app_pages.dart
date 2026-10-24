@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../modules/nudge_debug/bindings/nudge_debug_binding.dart';
+import '../modules/nudge_debug/views/nudge_debug_view.dart';
 import '../modules/onboarding/bindings/onboarding_binding.dart';
 import '../modules/onboarding/views/onboarding_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -70,6 +72,11 @@ abstract class AppPages {
       name: Routes.promptLab,
       page: () => const PromptLabView(),
       binding: PromptLabBinding(),
+    ),
+    GetPage(
+      name: Routes.nudgeDebug,
+      page: () => const NudgeDebugView(),
+      binding: NudgeDebugBinding(),
     ),
   ];
 }

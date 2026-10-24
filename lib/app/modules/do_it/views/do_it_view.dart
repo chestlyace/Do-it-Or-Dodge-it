@@ -148,6 +148,19 @@ class _Steps extends StatelessWidget {
               ],
             ),
           ),
+          if (!controller.isDone &&
+              !controller.nudges.notificationsEnabled.value)
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: const ListTile(
+                leading: Icon(Icons.notifications_off),
+                title: Text('Nudges are off'),
+                subtitle: Text(
+                  'Allow notifications for this app in Android settings to '
+                  'get a nudge about your next step.',
+                ),
+              ),
+            ),
           if (controller.isDone)
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),

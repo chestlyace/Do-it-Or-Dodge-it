@@ -32,6 +32,8 @@ void main() {
           database: db,
           modelRuntime: runtime,
           deviceInfo: FakeDeviceInfoSource(),
+          notifications: FakeNotificationGateway(),
+          backgroundScheduler: FakeBackgroundScheduler(),
         ),
       );
       await settle(tester);
@@ -58,6 +60,8 @@ void main() {
           database: db,
           modelRuntime: runtime,
           deviceInfo: FakeDeviceInfoSource(),
+          notifications: FakeNotificationGateway(),
+          backgroundScheduler: FakeBackgroundScheduler(),
         ),
       );
       await settle(tester);

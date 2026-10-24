@@ -34,6 +34,8 @@ void main() {
         database: db,
         modelRuntime: runtime,
         deviceInfo: device,
+        notifications: FakeNotificationGateway(),
+        backgroundScheduler: FakeBackgroundScheduler(),
         checksumOf: (_) async => GemmaModelOption.gemma4E2B.sha256,
       ),
     );

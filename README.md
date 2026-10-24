@@ -9,7 +9,7 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 5 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model, the four prompt jobs, and the core screens. You can add a task, then Do It (tiny steps, tick them off, draft help) or Dodge It (an excuse to copy or share), and see the history. Nudges, the dodge-risk score and the settings screen come in later phases.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 6 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model, the four prompt jobs, the core screens, and nudges. You can add a task, then Do It (tiny steps, tick them off, draft help, and local notifications about your next step) or Dodge It (an excuse to copy or share), and see the history. The dodge-risk score and the settings screen come in later phases.
 
 ## Requirements
 
@@ -38,6 +38,8 @@ dart run build_runner build
 On first launch the app offers Gemma 4 E2B (about 2.6 GB) or E4B (about 3.7 GB), recommending E4B only on phones with 8 GB of RAM or more. It downloads from public Hugging Face repos, so no account or token is needed. The download resumes if it is interrupted, runs in a foreground service, can be limited to Wi-Fi, and is checked against its SHA-256. After that the app works offline.
 
 **Benchmark:** long-press the **Home** title to open the hidden benchmark screen. Record the numbers in [`docs/benchmarks.md`](docs/benchmarks.md).
+
+**Nudges:** starting Do It schedules local notifications about the next undone step, paced by risk, never during quiet hours (21:00 to 09:00), and a daily background job plans them again. Long-press the title, then tap the bell icon, to see what is scheduled, turn on a **fast clock** (nudges 1, 2 and 3 minutes from now) and run the daily job by hand.
 
 **Prompt lab:** from the benchmark screen, tap the flask icon to run any prompt job with your own input, see the raw and parsed output, and run all four jobs on 20 sample tasks. Results go in [`docs/prompt-samples/`](docs/prompt-samples/README.md).
 

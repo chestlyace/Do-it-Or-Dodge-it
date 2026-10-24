@@ -11,6 +11,15 @@ abstract class SettingsKeys {
   static const quietHoursEnd = 'quiet_hours_end';
   static const wifiOnly = 'wifi_only';
 
+  /// Debug: schedule nudges minutes apart so they can be tested quickly.
+  static const nudgeFastClock = 'nudge_fast_clock';
+
+  /// Set once the notification permission has been asked for.
+  static const notificationsAsked = 'notifications_asked';
+
+  /// Prefix for stored nudge wording: `nudge_wording:<taskId>:<stepId>`.
+  static const nudgeWordingPrefix = 'nudge_wording:';
+
   /// Id of the model whose download started but has not finished.
   static const downloadingModelId = 'downloading_model_id';
 }

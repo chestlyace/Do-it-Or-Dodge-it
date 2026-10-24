@@ -15,6 +15,11 @@ class BenchmarkView extends GetView<BenchmarkController> {
         title: const Text('Benchmark'),
         actions: [
           IconButton(
+            tooltip: 'Nudges',
+            icon: const Icon(Icons.notifications),
+            onPressed: () => Get.toNamed(Routes.nudgeDebug),
+          ),
+          IconButton(
             tooltip: 'Prompt lab',
             icon: const Icon(Icons.science),
             onPressed: () => Get.toNamed(Routes.promptLab),

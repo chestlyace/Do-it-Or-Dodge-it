@@ -28,6 +28,43 @@ class NudgeRepository {
         );
   }
 
+  /// Creates a nudge whose notification id is its own row id, so the two can
+  /// always be matched up and ids never clash.
+  Future<Nudge> createScheduled({
+    required int taskId,
+    required DateTime fireAt,
+    required NudgeLevel level,
+    required String message,
+  }) {
+    return _db.transaction(() async {
+      final row = await create(
+        taskId: taskId,
+        fireAt: fireAt,
+        level: level,
+        message: message,
+        notificationId: 0,
+      );
+      await (_db.update(_db.nudges)..where((n) => n.id.equals(row.id))).write(
+        NudgesCompanion(notificationId: Value(row.id)),
+      );
+      return row.copyWith(notificationId: row.id);
+    });
+  }
+
+  /// Nudges that have not fired yet for one task, soonest first.
+  Future<List<Nudge>> listPendingForTask(int taskId) {
+    return (_db.select(_db.nudges)
+          ..where((n) => n.taskId.equals(taskId) & n.fired.equals(false))
+          ..orderBy([(n) => OrderingTerm.asc(n.fireAt)]))
+        .get();
+  }
+
+  Future<void> updateMessage(int id, String message) {
+    return (_db.update(_db.nudges)..where((n) => n.id.equals(id))).write(
+      NudgesCompanion(message: Value(message)),
+    );
+  }
+
   Future<Nudge?> getById(int id) {
     return (_db.select(
       _db.nudges,

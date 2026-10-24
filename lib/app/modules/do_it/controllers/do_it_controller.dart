@@ -9,6 +9,7 @@ import '../../../data/models/prompt_jobs.dart';
 import '../../../data/repositories/step_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../services/gemma_service.dart';
+import '../../../services/nudge_service.dart';
 import '../../../services/outcome_service.dart';
 import '../../../services/share_service.dart';
 
@@ -20,6 +21,7 @@ class DoItController extends GetxController {
   final _gemma = Get.find<GemmaService>();
   final _outcomes = Get.find<OutcomeService>();
   final _share = Get.find<ShareService>();
+  final nudges = Get.find<NudgeService>();
 
   final phase = DoItPhase.loading.obs;
   final task = Rxn<Task>();
@@ -109,11 +111,19 @@ class DoItController extends GetxController {
         }
         streamed.clear();
         phase.value = DoItPhase.ready;
+        unawaited(_startNudges(current.id));
       case JobFallback<ShrunkTask>():
         failureReason.value = result.reason;
         failureRaw.value = result.rawText;
         phase.value = DoItPhase.failed;
     }
+  }
+
+  /// Asks for the notification permission the first time, then schedules
+  /// nudges for the next undone step.
+  Future<void> _startNudges(int taskId) async {
+    await nudges.ensurePermission();
+    await nudges.replan(taskId);
   }
 
   Future<void> stopGenerating() => _gemma.stop();
@@ -124,9 +134,15 @@ class DoItController extends GetxController {
     if (step.doneAt == null) {
       await _steps.markDone(step.id);
       final remaining = await _steps.nextUndone(step.taskId);
-      if (remaining == null) await _outcomes.markDone(step.taskId);
+      if (remaining == null) {
+        // Closing the task also cancels its nudges.
+        await _outcomes.markDone(step.taskId);
+      } else {
+        unawaited(nudges.replan(step.taskId));
+      }
     } else {
       await _steps.markUndone(step.id);
+      unawaited(nudges.replan(step.taskId));
     }
   }
 

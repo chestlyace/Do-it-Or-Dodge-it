@@ -8,7 +8,9 @@ import 'package:do_it_or_dodge_it/app/data/models/gemma_model_option.dart';
 import 'package:do_it_or_dodge_it/app/data/models/settings_keys.dart';
 import 'package:do_it_or_dodge_it/app/data/repositories/settings_repository.dart';
 import 'package:do_it_or_dodge_it/app/services/device_info_service.dart';
+import 'package:do_it_or_dodge_it/app/services/background_service.dart';
 import 'package:do_it_or_dodge_it/app/services/model_runtime.dart';
+import 'package:do_it_or_dodge_it/app/services/notification_gateway.dart';
 import 'package:do_it_or_dodge_it/app/services/share_service.dart';
 
 const gib = 1024 * 1024 * 1024;
@@ -248,4 +250,98 @@ Future<void> runWithApp(
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   });
+}
+
+class ScheduledNotification {
+  const ScheduledNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.at,
+    required this.payload,
+  });
+
+  final int id;
+  final String title;
+  final String body;
+  final DateTime at;
+  final String? payload;
+}
+
+/// Records notifications instead of talking to Android.
+class FakeNotificationGateway implements NotificationGateway {
+  bool enabled = true;
+
+  /// What the permission dialog answers.
+  bool grantOnRequest = true;
+  int permissionRequests = 0;
+  int initializeCalls = 0;
+  Object? initializeError;
+  String? launch;
+  void Function(String? payload)? onTap;
+
+  final Map<int, ScheduledNotification> scheduled = {};
+  final List<int> cancelled = [];
+
+  List<ScheduledNotification> get inOrder =>
+      scheduled.values.toList()..sort((a, b) => a.at.compareTo(b.at));
+
+  @override
+  Future<void> initialize({void Function(String? payload)? onTap}) async {
+    initializeCalls++;
+    final error = initializeError;
+    if (error != null) throw error;
+    this.onTap = onTap;
+  }
+
+  @override
+  Future<String?> launchPayload() async => launch;
+
+  @override
+  Future<bool> areEnabled() async => enabled;
+
+  @override
+  Future<bool> requestPermission() async {
+    permissionRequests++;
+    enabled = grantOnRequest;
+    return grantOnRequest;
+  }
+
+  @override
+  Future<void> schedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime at,
+    String? payload,
+  }) async {
+    scheduled[id] = ScheduledNotification(
+      id: id,
+      title: title,
+      body: body,
+      at: at,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    scheduled.remove(id);
+    cancelled.add(id);
+  }
+
+  @override
+  Future<List<int>> pendingIds() async => scheduled.keys.toList();
+}
+
+class FakeBackgroundScheduler implements BackgroundScheduler {
+  int registerCalls = 0;
+  Object? error;
+
+  @override
+  Future<void> registerDailyJob() async {
+    registerCalls++;
+    final e = error;
+    if (e != null) throw e;
+  }
 }

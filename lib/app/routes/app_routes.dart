@@ -10,4 +10,5 @@ abstract class Routes {
   static const settings = '/settings';
   static const benchmark = '/benchmark';
   static const promptLab = '/prompt-lab';
+  static const nudgeDebug = '/nudge-debug';
 }
