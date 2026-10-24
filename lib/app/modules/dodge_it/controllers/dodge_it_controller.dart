@@ -10,6 +10,7 @@ import '../../../data/repositories/excuse_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../services/gemma_service.dart';
 import '../../../services/outcome_service.dart';
+import '../../../services/pregenerated_excuses.dart';
 import '../../../services/share_service.dart';
 
 enum DodgePhase { loading, notFound, form, generating, ready, failed }
@@ -20,6 +21,7 @@ class DodgeItController extends GetxController {
   final _gemma = Get.find<GemmaService>();
   final _outcomes = Get.find<OutcomeService>();
   final _share = Get.find<ShareService>();
+  final _pregenerated = Get.find<PregeneratedExcuses>();
 
   final recipientField = TextEditingController();
 
@@ -33,6 +35,10 @@ class DodgeItController extends GetxController {
   final formError = RxnString();
   final failureReason = RxnString();
   final failureRaw = RxnString();
+
+  /// True while the excuse on screen was written ahead of time, while the
+  /// phone charged, and is not about anyone in particular.
+  final readyMade = false.obs;
 
   /// True once an excuse was copied or shared and the dodge was logged.
   final logged = false.obs;
@@ -69,6 +75,17 @@ class DodgeItController extends GetxController {
     }
     task.value = found;
     phase.value = DodgePhase.form;
+
+    // An excuse written ahead of time shows straight away.
+    final ready = isClosed(found.status)
+        ? null
+        : await _pregenerated.read(found.id);
+    if (ready != null) {
+      excuse.value = ready;
+      useShort.value = false;
+      readyMade.value = true;
+      phase.value = DodgePhase.ready;
+    }
   }
 
   /// Writes an excuse, avoiding the last 5 already used for this person.
@@ -82,6 +99,9 @@ class DodgeItController extends GetxController {
     }
     formError.value = null;
     notice.value = null;
+    // The user wants a different one: the ready-made excuse is not needed.
+    readyMade.value = false;
+    await _pregenerated.consume(current.id);
     phase.value = DodgePhase.generating;
 
     final previous = await _excuses.recentForRecipient(
@@ -111,9 +131,35 @@ class DodgeItController extends GetxController {
 
   Future<void> stopGenerating() => _gemma.stop();
 
+  /// Checks the excuse can be used for the person typed in. Returns false and
+  /// says why in [formError] if not.
+  Future<bool> _canUse(String text) async {
+    final recipient = recipientField.text.trim();
+    if (recipient.isEmpty) {
+      formError.value = 'Say who the excuse is for';
+      return false;
+    }
+    final previous = await _excuses.recentForRecipient(
+      recipient,
+      limit: maxExcuseHistory,
+    );
+    final wanted = _normalise(text);
+    if (previous.any((e) => _normalise(e.body) == wanted)) {
+      formError.value =
+          'You already used this one for $recipient. Tap Regenerate for a new one.';
+      return false;
+    }
+    formError.value = null;
+    return true;
+  }
+
+  static String _normalise(String text) =>
+      text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+
   Future<void> copy() async {
     final text = selectedText;
     if (text.isEmpty) return;
+    if (!await _canUse(text)) return;
     await _share.copy(text);
     notice.value = 'Copied';
     await _logUse(text);
@@ -123,6 +169,7 @@ class DodgeItController extends GetxController {
   Future<void> share() async {
     final text = selectedText;
     if (text.isEmpty) return;
+    if (!await _canUse(text)) return;
     final shared = await _share.share(text);
     if (shared) await _logUse(text);
   }
@@ -139,6 +186,7 @@ class DodgeItController extends GetxController {
     );
     await _excuses.markShared(saved.id);
     await _outcomes.markDodged(current.id);
+    await _pregenerated.consume(current.id);
     logged.value = true;
   }
 

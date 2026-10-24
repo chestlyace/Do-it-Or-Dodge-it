@@ -10,13 +10,40 @@ import 'background_dispatcher.dart';
 abstract class BackgroundScheduler {
   /// Makes sure the daily job is scheduled. Safe to call at every launch.
   Future<void> registerDailyJob();
+
+  /// Makes sure the pre-generation job is scheduled. It only runs while the
+  /// phone is charging.
+  Future<void> registerPregenerationJob();
 }
 
 /// [BackgroundScheduler] backed by `workmanager`.
 class WorkmanagerScheduler implements BackgroundScheduler {
+  var _initialized = false;
+
+  Future<void> _initialize() async {
+    if (_initialized) return;
+    await Workmanager().initialize(backgroundCallbackDispatcher);
+    _initialized = true;
+  }
+
+  @override
+  Future<void> registerPregenerationJob() async {
+    await _initialize();
+    await Workmanager().registerPeriodicTask(
+      pregenerateJobName,
+      pregenerateJobName,
+      frequency: const Duration(hours: 24),
+      constraints: Constraints(
+        networkType: NetworkType.notRequired,
+        requiresCharging: true,
+        requiresBatteryNotLow: true,
+      ),
+    );
+  }
+
   @override
   Future<void> registerDailyJob() async {
-    await Workmanager().initialize(backgroundCallbackDispatcher);
+    await _initialize();
     // The default policy updates an existing job without resetting its timing.
     await Workmanager().registerPeriodicTask(
       dailyJobName,
@@ -50,6 +77,12 @@ class BackgroundService extends GetxService {
       // The app works without it; nudges just are not re-planned in the
       // background.
       debugPrint('Background job could not be scheduled: $e');
+    }
+    try {
+      await _scheduler.registerPregenerationJob();
+    } catch (e) {
+      // Without it everything is written when asked for, a little slower.
+      debugPrint('Pre-generation job could not be scheduled: $e');
     }
   }
 }

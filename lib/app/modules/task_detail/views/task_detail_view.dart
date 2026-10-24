@@ -70,21 +70,35 @@ class TaskDetailView extends GetView<TaskDetailController> {
               ),
             const SizedBox(height: 24),
             if (controller.canAct) ...[
-              SizedBox(
-                height: 64,
-                child: FilledButton.icon(
-                  onPressed: controller.doIt,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Do It'),
+              Semantics(
+                button: true,
+                label: 'Do It',
+                hint: 'Break "${task.title}" into tiny steps and get nudges',
+                excludeSemantics: true,
+                onTap: controller.doIt,
+                child: SizedBox(
+                  height: 64,
+                  child: FilledButton.icon(
+                    onPressed: controller.doIt,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Do It'),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 64,
-                child: OutlinedButton.icon(
-                  onPressed: controller.dodgeIt,
-                  icon: const Icon(Icons.directions_run),
-                  label: const Text('Dodge It'),
+              Semantics(
+                button: true,
+                label: 'Dodge It',
+                hint: 'Get an excuse for "${task.title}" to copy or share',
+                excludeSemantics: true,
+                onTap: controller.dodgeIt,
+                child: SizedBox(
+                  height: 64,
+                  child: OutlinedButton.icon(
+                    onPressed: controller.dodgeIt,
+                    icon: const Icon(Icons.directions_run),
+                    label: const Text('Dodge It'),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -92,7 +106,7 @@ class TaskDetailView extends GetView<TaskDetailController> {
                 final error = controller.modelError.value;
                 if (error != null) {
                   return Text(
-                    'The model could not be loaded: $error',
+                    error,
                     style: TextStyle(color: theme.colorScheme.error),
                   );
                 }

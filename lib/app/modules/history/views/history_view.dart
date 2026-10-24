@@ -50,8 +50,11 @@ class HistoryView extends GetView<HistoryController> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                runAlignment: WrapAlignment.center,
+                spacing: 24,
+                runSpacing: 12,
                 children: [
                   _Count('Done', controller.count(OutcomeResult.done)),
                   _Count('Dodged', controller.count(OutcomeResult.dodged)),

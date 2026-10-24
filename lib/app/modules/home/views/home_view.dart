@@ -53,6 +53,8 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
+          // A hidden developer shortcut: keep it out of the screen reader.
+          excludeFromSemantics: true,
           onLongPress: () => Get.toNamed(Routes.benchmark),
           child: const Text('Do It or Dodge It'),
         ),

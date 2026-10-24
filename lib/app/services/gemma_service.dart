@@ -68,13 +68,18 @@ class GemmaService extends GetxService with WidgetsBindingObserver {
   LoadOptions? _loadedWith;
   Future<void>? _loading;
   bool _stopRequested = false;
-  late final Future<void> started;
+  Future<void>? _started;
+
+  /// Completes once the engine is set up and the install state is known.
+  /// Starts on first use, so a background job can use the service without the
+  /// app's lifecycle.
+  Future<void> get started => _started ??= _start();
 
   @override
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
-    started = _start();
+    started;
   }
 
   @override
@@ -206,15 +211,52 @@ class GemmaService extends GetxService with WidgetsBindingObserver {
     LoadedModel model;
     try {
       model = await _runtime.load(options);
-    } catch (e) {
-      if (options.backend == ModelBackend.cpu) rethrow;
-      model = await _runtime.load(options.copyWith(backend: ModelBackend.cpu));
-      fellBackToCpu.value = true;
+    } catch (first) {
+      if (options.backend == ModelBackend.cpu) {
+        throw ModelLoadException('$first');
+      }
+      try {
+        model = await _runtime.load(
+          options.copyWith(backend: ModelBackend.cpu),
+        );
+        fellBackToCpu.value = true;
+      } catch (second) {
+        throw ModelLoadException('GPU: $first; CPU: $second');
+      }
     }
     _model = model;
     _loadedWith = options;
     activeBackend.value = model.activeBackend;
     isLoaded.value = true;
+  }
+
+  /// Deletes the downloaded model and forgets it, so the app asks for it again
+  /// at the next launch of onboarding.
+  Future<void> deleteModel() async {
+    await started;
+    await release();
+    final option = installed.value;
+    if (option != null) {
+      try {
+        await _runtime.uninstall(option.fileName);
+      } catch (_) {
+        // The file may already be gone; the settings are cleared regardless.
+      }
+    }
+    for (final key in [
+      SettingsKeys.modelId,
+      SettingsKeys.modelPath,
+      SettingsKeys.modelChecksum,
+      SettingsKeys.modelVersion,
+      SettingsKeys.downloadingModelId,
+    ]) {
+      await _settings.remove(key);
+    }
+    installed.value = null;
+    pendingDownload.value = null;
+    progress.value = 0;
+    errorMessage.value = null;
+    installState.value = ModelInstallState.notInstalled;
   }
 
   /// Frees the model's memory. Safe to call when nothing is loaded.
@@ -348,7 +390,9 @@ class GemmaService extends GetxService with WidgetsBindingObserver {
         }
       } catch (e) {
         return JobFallback(
-          reason: 'The model could not answer: $e',
+          reason: e is ModelLoadException
+              ? ModelLoadException.message
+              : 'The model could not answer: $e',
           rawText: buffer.toString(),
           retried: attempt > 0,
         );

@@ -8,6 +8,7 @@ import '../../../data/repositories/step_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/gemma_service.dart';
+import '../../../services/model_runtime.dart';
 import '../../../services/outcome_service.dart';
 import '../../../services/predictor_service.dart';
 
@@ -75,8 +76,10 @@ class TaskDetailController extends GetxController {
     _preloaded = true;
     try {
       await gemma.load();
+    } on ModelLoadException {
+      modelError.value = ModelLoadException.message;
     } catch (e) {
-      modelError.value = '$e';
+      modelError.value = 'The model could not be loaded: $e';
     }
   }
 

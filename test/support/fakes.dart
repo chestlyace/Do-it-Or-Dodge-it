@@ -336,7 +336,16 @@ class FakeNotificationGateway implements NotificationGateway {
 
 class FakeBackgroundScheduler implements BackgroundScheduler {
   int registerCalls = 0;
+  int pregenerationCalls = 0;
   Object? error;
+  Object? pregenerationError;
+
+  @override
+  Future<void> registerPregenerationJob() async {
+    pregenerationCalls++;
+    final e = pregenerationError;
+    if (e != null) throw e;
+  }
 
   @override
   Future<void> registerDailyJob() async {

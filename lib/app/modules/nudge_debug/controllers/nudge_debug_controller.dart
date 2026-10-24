@@ -4,10 +4,14 @@ import '../../../data/db/app_database.dart';
 import '../../../data/models/settings_keys.dart';
 import '../../../data/repositories/nudge_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/step_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../services/daily_job.dart';
 import '../../../services/nudge_service.dart';
+import '../../../services/gemma_service.dart';
 import '../../../services/predictor_service.dart';
+import '../../../services/pregenerate_job.dart';
+import '../../../services/pregenerated_excuses.dart';
 
 /// A nudge with the title of its task.
 class DebugNudge {
@@ -79,6 +83,18 @@ class NudgeDebugController extends GetxController {
       predictor: Get.find<PredictorService>(),
     ).run();
     message.value = 'Daily job: $result.';
+  });
+
+  /// Writes notification text and ready-made excuses now, with the model.
+  Future<void> pregenerate() => _run(() async {
+    final result = await PregenerateJob(
+      tasks: _tasks,
+      steps: Get.find<StepRepository>(),
+      nudges: service,
+      gemma: Get.find<GemmaService>(),
+      excuses: Get.find<PregeneratedExcuses>(),
+    ).run();
+    message.value = 'Pre-generation: $result.';
   });
 
   Future<void> sendTest() => _run(() async {

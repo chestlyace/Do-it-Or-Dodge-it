@@ -123,6 +123,7 @@ List<PlannedNudge> planNudges({
   QuietHours quiet = QuietHours.standard,
   bool fastClock = false,
   Duration horizon = planningHorizon,
+  int maxPerDay = maxNudgesPerDay,
 }) {
   if (fastClock) {
     return [
@@ -133,7 +134,9 @@ List<PlannedNudge> planNudges({
 
   final band = riskBand(risk);
   final gap = nudgeGap(band);
-  final perDay = nudgesPerDay(band).clamp(1, maxNudgesPerDay);
+  // The user's limit can only lower what the risk band allows.
+  final perDay = nudgesPerDay(band)
+      .clamp(1, maxPerDay.clamp(1, maxNudgesPerDay));
   final horizonEnd = now.add(horizon);
   final end = due.isBefore(horizonEnd) ? due : horizonEnd;
   // Escalate sooner for high risk tasks.
