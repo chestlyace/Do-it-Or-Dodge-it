@@ -39,7 +39,7 @@ void main() {
   }
 
   testWidgets('the benchmark screen links to the prompt lab', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       await tester.pumpWidget(
         DoItOrDodgeItApp(
           database: db,
@@ -62,7 +62,7 @@ void main() {
   testWidgets('runs a job and shows the parsed result and the raw text', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.responder = scripted([validShrink]);
       await openLab(tester);
 
@@ -81,7 +81,7 @@ void main() {
   testWidgets('broken output shows the reason and the raw text', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.responder = scripted(['this is not json']);
       await openLab(tester);
 
@@ -97,7 +97,7 @@ void main() {
   testWidgets('five excuse runs for one recipient are all different', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.responder = validResponder();
       final lab = await openLab(tester);
       lab.job.value = LabJob.writeExcuse;
@@ -119,7 +119,7 @@ void main() {
   testWidgets('runs all four jobs on the 20 samples and reports pass rates', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.responder = validResponder();
       final lab = await openLab(tester);
 
@@ -136,7 +136,7 @@ void main() {
   });
 
   testWidgets('the batch counts failures in the pass rate', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.responder = (call) => 'broken';
       final lab = await openLab(tester);
 

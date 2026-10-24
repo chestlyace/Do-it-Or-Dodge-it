@@ -13,6 +13,7 @@ import 'services/edge_ai_model_runtime.dart';
 import 'services/gemma_service.dart';
 import 'services/model_runtime.dart';
 import 'services/nudge_service.dart';
+import 'services/outcome_service.dart';
 import 'services/predictor_service.dart';
 import 'services/share_service.dart';
 
@@ -23,12 +24,14 @@ class InitialBinding extends Bindings {
     this.modelRuntime,
     this.deviceInfo,
     this.checksumOf,
+    this.shareService,
   });
 
   final AppDatabase? database;
   final ModelRuntime? modelRuntime;
   final DeviceInfoSource? deviceInfo;
   final Future<String> Function(String path)? checksumOf;
+  final ShareService? shareService;
 
   @override
   void dependencies() {
@@ -54,7 +57,14 @@ class InitialBinding extends Bindings {
     );
     Get.put(PredictorService(), permanent: true);
     Get.put(NudgeService(), permanent: true);
-    Get.put(ShareService(), permanent: true);
+    Get.put(shareService ?? ShareService(), permanent: true);
+    Get.put(
+      OutcomeService(
+        tasks: Get.find<TaskRepository>(),
+        outcomes: Get.find<OutcomeRepository>(),
+      ),
+      permanent: true,
+    );
     Get.put(BackgroundService(), permanent: true);
   }
 }

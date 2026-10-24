@@ -89,7 +89,7 @@ The stack is Flutter + GetX on Android, with Gemma running through the `flutter_
 | Dodge predictor | Logistic regression written in pure Dart | Proposed | Tiny, fast, trains on the phone, explainable |
 | Notifications | `flutter_local_notifications` | Proposed | Scheduled local notifications, no internet |
 | Background jobs | `workmanager` | Proposed | Daily re-plan of nudges and predictor retrain |
-| Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Proposed | Android share sheet and copy |
+| Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Confirmed | Android share sheet and copy. A dismissed share sheet logs nothing |
 | File paths | `path_provider` | Proposed | Locate model file and DB |
 | RAM, free storage, connection type | Small Kotlin method channel (`ConnectivityManager`, `StatFs`, `ActivityManager`) | Confirmed | No extra Dart packages |
 | Download check | `crypto` (SHA-256) | Added in Phase 3 | Verifies the downloaded file against its published checksum |

@@ -36,6 +36,12 @@ class TaskRepository {
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  Stream<Task?> watchById(int id) {
+    return (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(id))).watchSingleOrNull();
+  }
+
   Future<List<Task>> listAll() {
     return (_db.select(
       _db.tasks,
