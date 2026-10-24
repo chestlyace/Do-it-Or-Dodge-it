@@ -117,6 +117,15 @@ class _Body extends StatelessWidget {
         ],
         if (phase == DodgePhase.ready && controller.excuse.value != null) ...[
           const SizedBox(height: 16),
+          if (controller.readyMade.value)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'A ready-made excuse in a Polite tone. Say who it is for, then '
+                'copy or share it, or pick a tone and regenerate.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
           SegmentedButton<bool>(
             segments: const [
               ButtonSegment(value: false, label: Text('Full')),

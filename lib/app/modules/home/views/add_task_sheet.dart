@@ -123,23 +123,20 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               decoration: const InputDecoration(labelText: 'Note (optional)'),
             ),
             const SizedBox(height: 8),
-            Row(
+            Text(_due == null ? 'No due date' : 'Due ${formatDate(_due!)}'),
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    _due == null ? 'No due date' : 'Due ${formatDate(_due!)}',
-                  ),
-                ),
-                if (_due != null)
-                  IconButton(
-                    tooltip: 'Clear due date',
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => setState(() => _due = null),
-                  ),
                 TextButton(
                   onPressed: _pickDate,
                   child: const Text('Pick a due date'),
                 ),
+                if (_due != null)
+                  TextButton(
+                    onPressed: () => setState(() => _due = null),
+                    child: const Text('Clear due date'),
+                  ),
               ],
             ),
             const SizedBox(height: 8),

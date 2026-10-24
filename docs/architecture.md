@@ -88,7 +88,7 @@ The stack is Flutter + GetX on Android, with Gemma running through the `flutter_
 | Local database | `drift` (SQLite) | Confirmed | Typed queries, generated classes, built-in migrations |
 | Dodge predictor | Logistic regression written in pure Dart | Confirmed | Tiny, fast, trains on the phone, explainable |
 | Notifications | `flutter_local_notifications` (+ `timezone`) | Confirmed | Scheduled local notifications, no internet. Needs core library desugaring on Android |
-| Background jobs | `workmanager` | Confirmed | Daily re-plan of nudges and predictor retrain |
+| Background jobs | `workmanager` | Confirmed | Two jobs: the daily re-plan and predictor retrain (no model), and a pre-generation job that only runs while the phone is charging |
 | Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Confirmed | Android share sheet and copy. A dismissed share sheet logs nothing |
 | File paths | `path_provider` | Proposed | Locate model file and DB |
 | RAM, free storage, connection type | Small Kotlin method channel (`ConnectivityManager`, `StatFs`, `ActivityManager`) | Confirmed | No extra Dart packages |
@@ -234,6 +234,16 @@ lib/
 
 Controllers never call `flutter_edge_ai` or the database directly; they go through services and repositories, so the model or the DB package can be swapped later.
 
+## Settings and polish
+
+**Settings screen** (Home, gear icon): quiet hours (start and end), the most nudges a task gets in a day (1 to 6, which can only lower what the risk band allows), Wi-Fi-only download, model information (name, version, size, whether it runs on the GPU or CPU), **Delete model** and **Clear tasks and history**. Quiet hours and the nudge limit re-plan the pending nudges straight away, so nothing needs a restart. Deleting the model returns to the download screen and keeps your tasks. Clearing data deletes every task, step, excuse, nudge and outcome, cancels the notifications, and forgets the dodge predictor and everything saved for it; the model and the preferences stay.
+
+**Pre-generation.** A second background job runs once a day and only while the phone is charging (and the battery is not low). It loads the model, writes the notification text for the next step of each task being worked on, writes one general excuse in a Polite tone (for "someone", no name) for each open task, and frees the model. At most 8 tasks are handled per run. Dodge It shows that excuse at once when it exists. The user still says who it is for before copying or sharing, and an excuse already used for that person in their last 5 is not reused. Picking another tone or tapping Regenerate writes a tailored one as usual.
+
+**When the phone cannot load the model**, the app says so plainly ("This phone could not load the model. It may not have enough free memory...") instead of showing a raw error, and the technical detail is kept for bug reports.
+
+**Accessibility.** The Do It and Dodge It buttons are labelled buttons with a hint that names the task. Headings and the nudge-limit slider are announced. The layouts hold up at twice the normal text size on a 360-pixel-wide phone, and the colours meet a 4.5:1 contrast ratio in the light and dark themes.
+
 ## Privacy, permissions and device requirements
 
 The only network call the app ever makes is the one-time model download; tasks, excuses, outcomes and predictor weights never leave the phone.
@@ -248,6 +258,7 @@ The only network call the app ever makes is the one-time model download; tasks, 
 | `WAKE_LOCK` | Keep the download alive while the screen is off |
 | `POST_NOTIFICATIONS` | Nudges, Android 13 and later |
 | `RECEIVE_BOOT_COMPLETED` | Re-register nudges after a restart |
+| `WAKE_LOCK`, `ACCESS_NETWORK_STATE` | Keep the model download running, and check for Wi-Fi |
 
 No contacts, calendar, microphone, location or exact-alarm permission is requested.
 
@@ -290,7 +301,7 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Risk used until Phase 7 | A fixed 0.5 (medium) | The predictor replaces it |
 | Excuse tones | Polite, Casual, Funny, Formal | |
 | Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt and checked again in code with a keyword list (Phase 4) |
-| Languages | English only | |
+| Languages | English only | Phase 8 applied it: there is one set of English text and English prompts, and no language switch |
 | Minimum Android version | Android 11 (API 30) | Changed in Phase 3 from API 29: `.litertlm` models need API 30. `minSdk` is 30 |
 | Minimum RAM | 4 GB | Onboarding warns below this |
 | Model recommendation | E4B at 8 GB of RAM or more, otherwise E2B | The user can override. Free storage needed is the file size plus 1 GB. Thresholds are revisited after benchmarking |

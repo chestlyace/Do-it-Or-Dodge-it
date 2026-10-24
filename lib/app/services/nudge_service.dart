@@ -135,6 +135,11 @@ class NudgeService extends GetxService {
       risk: await _riskOf(task),
       quiet: quiet,
       fastClock: fast,
+      maxPerDay:
+          int.tryParse(
+            await _settings.get(SettingsKeys.maxNudgesPerDay) ?? '',
+          ) ??
+          maxNudgesPerDay,
     );
 
     final wording = await _storedWording(task.id, step.id);
@@ -306,18 +311,30 @@ class NudgeService extends GetxService {
     _inFlight.add(tracked);
   }
 
-  Future<void> _writeWording(Task task, Step step) async {
+  /// True when wording for this step is already stored.
+  Future<bool> hasWording(int taskId, int stepId) async =>
+      await _storedWording(taskId, stepId) != null;
+
+  /// Writes and stores the notification text for [step] with the model, unless
+  /// it is stored already. Returns true if new text was stored.
+  Future<bool> ensureWording(Task task, Step step) async {
     final gemma = _gemma;
-    if (gemma == null) return;
+    if (gemma == null) return false;
+    if (await hasWording(task.id, step.id)) return false;
+    final result = await gemma.nudgeWording(
+      NudgeInput(taskTitle: task.title, stepTitle: step.title),
+    );
+    if (result is! JobSuccess<NudgeWording>) return false;
+    await _settings.set(
+      '${SettingsKeys.nudgeWordingPrefix}${task.id}:${step.id}',
+      jsonEncode(result.value.toJson()),
+    );
+    return true;
+  }
+
+  Future<void> _writeWording(Task task, Step step) async {
     try {
-      final result = await gemma.nudgeWording(
-        NudgeInput(taskTitle: task.title, stepTitle: step.title),
-      );
-      if (result is! JobSuccess<NudgeWording>) return;
-      await _settings.set(
-        '${SettingsKeys.nudgeWordingPrefix}${task.id}:${step.id}',
-        jsonEncode(result.value.toJson()),
-      );
+      if (!await ensureWording(task, step)) return;
       // Only refresh if this is still the step the nudges are about.
       final next = await _steps.nextUndone(task.id);
       if (next?.id == step.id) {

@@ -79,4 +79,8 @@ class TaskRepository {
   Future<int> delete(int id) {
     return (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
   }
+
+  /// Deletes every task, and with them all steps, outcomes, excuses and
+  /// nudges.
+  Future<int> deleteAll() => _db.delete(_db.tasks).go();
 }

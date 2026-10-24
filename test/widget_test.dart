@@ -87,7 +87,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Settings'));
       await settle(tester);
-      expect(find.text('Settings placeholder'), findsOneWidget);
+      expect(find.text('Quiet hours start'), findsOneWidget);
     });
   });
 }

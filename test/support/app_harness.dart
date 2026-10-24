@@ -53,7 +53,18 @@ class AppHarness {
   }
 
   Future<void> tapText(WidgetTester tester, String text) async {
-    await tester.tap(find.text(text).first);
+    final finder = find.text(text);
+    if (finder.evaluate().isEmpty) {
+      // Large text pushes things below the fold; scroll like a user would.
+      await tester.scrollUntilVisible(
+        finder,
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+    }
+    await tester.ensureVisible(finder.first);
+    await tester.pump();
+    await tester.tap(finder.first);
     await settle(tester);
   }
 
@@ -89,6 +100,9 @@ class AppHarness {
     if (note != null) {
       await tester.enterText(find.byType(TextField).last, note);
     }
+    // At large text sizes the button can be below the fold.
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Add task'));
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add task'));
     await settle(tester);
   }

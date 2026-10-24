@@ -50,6 +50,10 @@ class NudgeDebugView extends GetView<NudgeDebugController> {
                   child: const Text('Run daily job now'),
                 ),
                 OutlinedButton(
+                  onPressed: busy ? null : controller.pregenerate,
+                  child: const Text('Pre-generate now'),
+                ),
+                OutlinedButton(
                   onPressed: busy ? null : controller.sendTest,
                   child: const Text('Test notification'),
                 ),

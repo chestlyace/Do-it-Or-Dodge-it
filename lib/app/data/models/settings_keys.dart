@@ -11,6 +11,13 @@ abstract class SettingsKeys {
   static const quietHoursEnd = 'quiet_hours_end';
   static const wifiOnly = 'wifi_only';
 
+  /// The most nudges a task gets in a day, 1 to 6. Set in Settings.
+  static const maxNudgesPerDay = 'max_nudges_per_day';
+
+  /// Prefix for an excuse written ahead of time while the phone charged:
+  /// `pregen_excuse:<taskId>`.
+  static const pregenExcusePrefix = 'pregen_excuse:';
+
   /// Debug: schedule nudges minutes apart so they can be tested quickly.
   static const nudgeFastClock = 'nudge_fast_clock';
 
