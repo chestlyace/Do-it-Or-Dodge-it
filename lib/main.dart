@@ -6,6 +6,7 @@ import 'app/data/db/app_database.dart';
 import 'app/initial_binding.dart';
 import 'app/services/device_info_service.dart';
 import 'app/services/model_runtime.dart';
+import 'app/services/share_service.dart';
 import 'app/routes/app_pages.dart';
 
 void main() {
@@ -19,6 +20,7 @@ class DoItOrDodgeItApp extends StatelessWidget {
     this.modelRuntime,
     this.deviceInfo,
     this.checksumOf,
+    this.shareService,
   });
 
   /// Tests pass fakes; on the phone these are null and the real ones are used.
@@ -26,6 +28,7 @@ class DoItOrDodgeItApp extends StatelessWidget {
   final ModelRuntime? modelRuntime;
   final DeviceInfoSource? deviceInfo;
   final Future<String> Function(String path)? checksumOf;
+  final ShareService? shareService;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +42,7 @@ class DoItOrDodgeItApp extends StatelessWidget {
         modelRuntime: modelRuntime,
         deviceInfo: deviceInfo,
         checksumOf: checksumOf,
+        shareService: shareService,
       ),
       initialRoute: AppPages.initial,
       getPages: AppPages.routes,

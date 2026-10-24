@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:do_it_or_dodge_it/app/data/db/app_database.dart';
@@ -8,6 +9,7 @@ import 'package:do_it_or_dodge_it/app/data/models/settings_keys.dart';
 import 'package:do_it_or_dodge_it/app/data/repositories/settings_repository.dart';
 import 'package:do_it_or_dodge_it/app/services/device_info_service.dart';
 import 'package:do_it_or_dodge_it/app/services/model_runtime.dart';
+import 'package:do_it_or_dodge_it/app/services/share_service.dart';
 
 const gib = 1024 * 1024 * 1024;
 
@@ -212,4 +214,38 @@ Future<void> settle(WidgetTester tester, {int rounds = 5}) async {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     await tester.pump(const Duration(milliseconds: 300));
   }
+}
+
+/// Records copies and shares instead of touching the platform.
+class FakeShareService extends ShareService {
+  final List<String> copied = [];
+  final List<String> shared = [];
+
+  /// What the share sheet "returns": false means the user dismissed it.
+  bool shareResult = true;
+
+  @override
+  Future<void> copy(String text) async => copied.add(text);
+
+  @override
+  Future<bool> share(String text) async {
+    shared.add(text);
+    return shareResult;
+  }
+}
+
+/// Runs [body] in real async (needed for database streams) and unmounts the
+/// app afterwards, so drift's cleanup timers run outside the fake-async zone.
+Future<void> runWithApp(
+  WidgetTester tester,
+  Future<void> Function() body,
+) async {
+  await tester.runAsync(() async {
+    try {
+      await body();
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  });
 }

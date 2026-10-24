@@ -5,6 +5,14 @@ import 'package:drift/drift.dart';
 import '../db/app_database.dart';
 import '../models/enums.dart';
 
+/// An outcome together with the task it belongs to.
+class HistoryEntry {
+  const HistoryEntry({required this.outcome, required this.task});
+
+  final Outcome outcome;
+  final Task task;
+}
+
 class OutcomeRepository {
   OutcomeRepository(this._db);
 
@@ -39,6 +47,22 @@ class OutcomeRepository {
     return (_db.select(
       _db.outcomes,
     )..orderBy([(o) => OrderingTerm.desc(o.at)])).watch();
+  }
+
+  /// Every outcome with its task, newest first.
+  Stream<List<HistoryEntry>> watchHistory() {
+    final query = _db.select(_db.outcomes).join([
+      innerJoin(_db.tasks, _db.tasks.id.equalsExp(_db.outcomes.taskId)),
+    ])..orderBy([OrderingTerm.desc(_db.outcomes.at)]);
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          HistoryEntry(
+            outcome: row.readTable(_db.outcomes),
+            task: row.readTable(_db.tasks),
+          ),
+      ],
+    );
   }
 
   Future<List<Outcome>> listForTask(int taskId) {

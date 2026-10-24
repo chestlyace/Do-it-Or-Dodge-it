@@ -26,7 +26,7 @@ void main() {
   testWidgets('long-pressing the Home title opens the benchmark', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       await tester.pumpWidget(
         DoItOrDodgeItApp(
           database: db,
@@ -38,7 +38,7 @@ void main() {
 
       // The long-press timer runs in real time inside runAsync.
       final gesture = await tester.startGesture(
-        tester.getCenter(find.text('Home')),
+        tester.getCenter(find.text('Do It or Dodge It')),
       );
       await Future<void>.delayed(const Duration(milliseconds: 700));
       await gesture.up();
@@ -52,7 +52,7 @@ void main() {
   testWidgets('runs the fixed prompt and shows the reply and numbers', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       await tester.pumpWidget(
         DoItOrDodgeItApp(
           database: db,

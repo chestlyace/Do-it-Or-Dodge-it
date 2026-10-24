@@ -47,12 +47,12 @@ void main() {
   testWidgets('goes straight to Home when the model is installed', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       await installModelFixture(db, runtime);
       await pumpApp(tester);
       await settle(tester);
 
-      expect(find.text('No tasks yet'), findsOneWidget);
+      expect(find.textContaining('No tasks yet'), findsOneWidget);
       expect(find.text('Set up'), findsNothing);
       expect(runtime.installCalls, 0);
     });
@@ -61,7 +61,7 @@ void main() {
   testWidgets('shows the sizes and recommends E2B on a 6 GB phone', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.totalRamBytes = 6 * gib;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -76,7 +76,7 @@ void main() {
   });
 
   testWidgets('recommends E4B on a 12 GB phone', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.totalRamBytes = 12 * gib;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -88,7 +88,7 @@ void main() {
   });
 
   testWidgets('warns below 4 GB of RAM', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.totalRamBytes = 3 * gib;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -99,7 +99,7 @@ void main() {
   });
 
   testWidgets('disables the download when storage is too low', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.freeStorageBytes = 2 * gib;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -112,7 +112,7 @@ void main() {
   });
 
   testWidgets('Wi-Fi only blocks a download on mobile data', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.onUnmeteredNetwork = false;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -130,7 +130,7 @@ void main() {
   testWidgets('turning Wi-Fi only off allows mobile data and is remembered', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       device.onUnmeteredNetwork = false;
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -152,7 +152,7 @@ void main() {
   testWidgets('shows progress, then Home when the download finishes', (
     tester,
   ) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.installGate = Completer<void>();
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -169,12 +169,12 @@ void main() {
       runtime.installGate!.complete();
       await settle(tester);
 
-      expect(find.text('No tasks yet'), findsOneWidget);
+      expect(find.textContaining('No tasks yet'), findsOneWidget);
     });
   });
 
   testWidgets('resumes an interrupted download on launch', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       await SettingsRepository(db)
           .set(SettingsKeys.downloadingModelId, GemmaModelOption.gemma4E4B.id);
       await pumpApp(tester);
@@ -186,7 +186,7 @@ void main() {
   });
 
   testWidgets('shows an error and lets the user retry', (tester) async {
-    await tester.runAsync(() async {
+    await runWithApp(tester, () async {
       runtime.installError = Exception('connection lost');
       await pumpApp(tester);
       await Future<void>.delayed(const Duration(milliseconds: 100));

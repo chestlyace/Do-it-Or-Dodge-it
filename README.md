@@ -9,7 +9,7 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 4 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model (first-launch download, loading, and a benchmark screen), and the four prompt jobs with JSON validation. The task screens are still placeholders.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 5 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model, the four prompt jobs, and the core screens. You can add a task, then Do It (tiny steps, tick them off, draft help) or Dodge It (an excuse to copy or share), and see the history. Nudges, the dodge-risk score and the settings screen come in later phases.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ On first launch the app offers Gemma 4 E2B (about 2.6 GB) or E4B (about 3.7 GB),
 
 **Prompt lab:** from the benchmark screen, tap the flask icon to run any prompt job with your own input, see the raw and parsed output, and run all four jobs on 20 sample tasks. Results go in [`docs/prompt-samples/`](docs/prompt-samples/README.md).
 
-In debug builds, the Home placeholder has a **Seed sample tasks** button. Tap a task to move it open, doing, done; long-press to delete it.
+In debug builds, Home has a **Seed sample tasks** button (the flask icon). Tap a task to open it; long-press to delete it.
 
 ## Check
 
