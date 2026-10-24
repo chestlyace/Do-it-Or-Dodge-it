@@ -3,9 +3,15 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
+import '../core/prompts/excuse_prompt.dart';
+import '../core/prompts/help_prompt.dart';
+import '../core/prompts/nudge_prompt.dart';
+import '../core/prompts/prompt_job.dart';
+import '../core/prompts/shrink_prompt.dart';
 import '../core/utils/file_checksum.dart';
 import '../data/models/benchmark_result.dart';
 import '../data/models/gemma_model_option.dart';
+import '../data/models/prompt_jobs.dart';
 import '../data/models/settings_keys.dart';
 import '../data/repositories/settings_repository.dart';
 import 'model_runtime.dart';
@@ -61,6 +67,7 @@ class GemmaService extends GetxService with WidgetsBindingObserver {
   LoadedModel? _model;
   LoadOptions? _loadedWith;
   Future<void>? _loading;
+  bool _stopRequested = false;
   late final Future<void> started;
 
   @override
@@ -245,9 +252,134 @@ class GemmaService extends GetxService with WidgetsBindingObserver {
     }
   }
 
-  /// Stops the reply that is being generated.
+  /// Stops the reply that is being generated. A prompt job that is running
+  /// ends with a stopped [JobFallback] and does not retry.
   Future<void> stop() async {
+    _stopRequested = true;
     await _model?.stop();
+  }
+
+  // ---- Prompt jobs ----
+
+  /// Splits a task into 3 to 7 tiny steps; the first takes under 2 minutes.
+  Future<JobResult<ShrunkTask>> shrinkTask(
+    ShrinkInput input, {
+    void Function(String token)? onToken,
+    void Function(int attempt)? onAttempt,
+  }) {
+    return runJob(
+      shrinkJob(),
+      shrinkUserPrompt(input),
+      onToken: onToken,
+      onAttempt: onAttempt,
+    );
+  }
+
+  /// Drafts text (an email, message or outline) for one step.
+  Future<JobResult<StepDraft>> helpWithStep(
+    HelpInput input, {
+    void Function(String token)? onToken,
+    void Function(int attempt)? onAttempt,
+  }) {
+    return runJob(
+      helpJob(),
+      helpUserPrompt(input),
+      onToken: onToken,
+      onAttempt: onAttempt,
+    );
+  }
+
+  /// Writes an excuse and a shorter variant, avoiding the last
+  /// [maxExcuseHistory] excuses already used for the same person.
+  Future<JobResult<ExcuseDraft>> writeExcuse(
+    ExcuseInput input, {
+    void Function(String token)? onToken,
+    void Function(int attempt)? onAttempt,
+  }) {
+    return runJob(
+      excuseJob(previousExcuses: input.previousExcuses),
+      excuseUserPrompt(input),
+      onToken: onToken,
+      onAttempt: onAttempt,
+    );
+  }
+
+  /// Writes the gentle, firm and last-call notification text for a step.
+  Future<JobResult<NudgeWording>> nudgeWording(
+    NudgeInput input, {
+    void Function(String token)? onToken,
+    void Function(int attempt)? onAttempt,
+  }) {
+    return runJob(
+      nudgeJob(),
+      nudgeUserPrompt(input),
+      onToken: onToken,
+      onAttempt: onAttempt,
+    );
+  }
+
+  /// Runs [job]: streams the reply, parses it, and if it is unusable asks once
+  /// more with a stricter instruction. Never throws for bad model output; the
+  /// result is a [JobFallback] carrying the raw text instead.
+  Future<JobResult<T>> runJob<T>(
+    PromptJob<T> job,
+    String userPrompt, {
+    void Function(String token)? onToken,
+    void Function(int attempt)? onAttempt,
+    LoadOptions loadOptions = const LoadOptions(),
+  }) async {
+    _stopRequested = false;
+    var instruction = job.systemInstruction;
+    var raw = '';
+    var reason = '';
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      onAttempt?.call(attempt);
+      final buffer = StringBuffer();
+      try {
+        await for (final token in generate(
+          userPrompt,
+          systemInstruction: instruction,
+          maxOutputTokens: job.maxOutputTokens,
+          loadOptions: loadOptions,
+        )) {
+          buffer.write(token);
+          onToken?.call(token);
+        }
+      } catch (e) {
+        return JobFallback(
+          reason: 'The model could not answer: $e',
+          rawText: buffer.toString(),
+          retried: attempt > 0,
+        );
+      }
+      raw = buffer.toString();
+
+      if (_stopRequested) {
+        return JobFallback(
+          reason: 'Stopped.',
+          rawText: raw,
+          retried: attempt > 0,
+          stopped: true,
+        );
+      }
+
+      try {
+        return JobSuccess(job.parse(raw), rawText: raw, retried: attempt > 0);
+      } on JobFormatException catch (e) {
+        reason = e.message;
+        instruction = job.stricterInstruction(reason);
+      } catch (e) {
+        reason = 'the reply could not be read ($e)';
+        instruction = job.stricterInstruction(reason);
+      }
+    }
+
+    return JobFallback(
+      reason: 'The reply was not usable: $reason.',
+      rawText: raw,
+      retried: true,
+    );
   }
 
   /// Loads the model fresh with [options], runs [prompt] and times it.

@@ -98,7 +98,7 @@ No backend, no cloud services and no API keys are part of the running app.
 
 ## On-device AI: Gemma
 
-One `GemmaService` owns the model: it downloads it once, loads it on demand, and exposes three prompt jobs that all return validated JSON.
+One `GemmaService` owns the model: it downloads it once, loads it on demand, and exposes four prompt jobs that all return validated JSON.
 
 **Model lifecycle**
 
@@ -115,12 +115,15 @@ One `GemmaService` owns the model: it downloads it once, loads it on demand, and
 | `shrinkTask` | Task title, note, due date | 3 to 7 steps, each with a title and an estimated minutes value; step 1 must take under 2 minutes |
 | `helpWithStep` | Task, the chosen step | A draft (email, message, outline) the user can copy |
 | `writeExcuse` | Task, who it is for, tone, excuses already used for that person | One excuse, plus a shorter variant |
+| `nudgeWording` | Task, the next step | Gentle, firm and last-call notification text, each one sentence of at most 100 characters |
 
 **Rules for every job**
 
 - System instruction fixes the job and the JSON shape.
 - Responses stream to the UI; JSON is parsed when the stream ends.
-- Invalid JSON → one automatic retry with a stricter instruction, then show the raw text.
+- Invalid JSON, or JSON that breaks a rule (wrong number of steps, first step 2 minutes or more, empty field) → one automatic retry with a stricter instruction, then the raw text is returned as a fallback. Bad model output never throws.
+- Every job caps its output length: `shrinkTask` 400 tokens, `helpWithStep` 450, `writeExcuse` 220, `nudgeWording` 160.
+- `writeExcuse` also rejects, and retries, a reply that mentions health, death, legal trouble or an emergency, or that repeats one of the last 5 excuses for that person.
 - Prompts stay short; history passed to `writeExcuse` is capped at the last 5 excuses for that person.
 - The user can stop generation at any time.
 
@@ -278,7 +281,7 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Task categories | Fixed list plus "Other" with free text | The free text is stored with the task; the predictor treats it as "Other". The list is set in Phase 2 |
 | Nudge limits | Max 6 per day; quiet hours 21:00 to 09:00 | Spacing per risk level is not yet decided and is settled in Phase 6 |
 | Excuse tones | Polite, Casual, Funny, Formal | |
-| Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt (Phase 4) |
+| Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt and checked again in code with a keyword list (Phase 4) |
 | Languages | English only | |
 | Minimum Android version | Android 11 (API 30) | Changed in Phase 3 from API 29: `.litertlm` models need API 30. `minSdk` is 30 |
 | Minimum RAM | 4 GB | Onboarding warns below this |

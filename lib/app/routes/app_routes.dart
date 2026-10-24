@@ -9,4 +9,5 @@ abstract class Routes {
   static const history = '/history';
   static const settings = '/settings';
   static const benchmark = '/benchmark';
+  static const promptLab = '/prompt-lab';
 }
