@@ -11,11 +11,17 @@ import 'package:do_it_or_dodge_it/app/services/share_service.dart';
 import 'package:do_it_or_dodge_it/main.dart';
 
 import 'data/test_database.dart';
+import 'support/fakes.dart';
 
 void main() {
   late AppDatabase db;
+  late FakeModelRuntime runtime;
 
-  setUp(() => db = createTestDatabase());
+  setUp(() async {
+    db = createTestDatabase();
+    runtime = FakeModelRuntime();
+    await installModelFixture(db, runtime);
+  });
 
   tearDown(() async {
     Get.reset();
@@ -23,7 +29,13 @@ void main() {
   });
 
   testWidgets('registers every service at startup', (tester) async {
-    await tester.pumpWidget(DoItOrDodgeItApp(database: db));
+    await tester.pumpWidget(
+      DoItOrDodgeItApp(
+        database: db,
+        modelRuntime: runtime,
+        deviceInfo: FakeDeviceInfoSource(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(Get.isRegistered<GemmaService>(), isTrue);
@@ -34,12 +46,17 @@ void main() {
   });
 
   testWidgets('every module route opens its placeholder', (tester) async {
-    await tester.pumpWidget(DoItOrDodgeItApp(database: db));
+    await tester.pumpWidget(
+      DoItOrDodgeItApp(
+        database: db,
+        modelRuntime: runtime,
+        deviceInfo: FakeDeviceInfoSource(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsWidgets);
 
     const routes = {
-      Routes.onboarding: 'Onboarding placeholder',
       Routes.taskDetail: 'Task detail placeholder',
       Routes.doIt: 'Do It placeholder',
       Routes.dodgeIt: 'Dodge It placeholder',

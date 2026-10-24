@@ -8,4 +8,5 @@ abstract class Routes {
   static const dodgeIt = '/dodge-it';
   static const history = '/history';
   static const settings = '/settings';
+  static const benchmark = '/benchmark';
 }

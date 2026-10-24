@@ -21,7 +21,10 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: GestureDetector(
+          onLongPress: () => Get.toNamed(Routes.benchmark),
+          child: const Text('Home'),
+        ),
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Go to',
