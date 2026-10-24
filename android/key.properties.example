@@ -1,0 +1,9 @@
+# Copy this file to android/key.properties and fill it in.
+# android/key.properties and the keystore must NEVER be committed (they are in
+# .gitignore). Keep a backup of the keystore: without it you cannot publish
+# updates that install over this release.
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=doitordodgeit
+# Path relative to the android/app folder.
+storeFile=../doitordodgeit-release.jks

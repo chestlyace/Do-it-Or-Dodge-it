@@ -191,7 +191,7 @@ void main() {
     testWidgets('shows what is installed', (tester) async {
       await runWithApp(tester, () async {
         await openSettings(tester);
-        await scrollTo(tester, 'Delete model');
+        await scrollTo(tester, 'Gemma 4 E2B');
 
         expect(find.text('Gemma 4 E2B'), findsOneWidget);
         expect(find.text('gemma-4-E2B-it@1caa527'), findsOneWidget);
@@ -205,7 +205,7 @@ void main() {
         await openSettings(tester);
         await Get.find<SettingsController>().gemma.load();
         await settle(tester);
-        await scrollTo(tester, 'Delete model');
+        await scrollTo(tester, 'Running on');
 
         expect(find.text('GPU'), findsOneWidget);
       });
@@ -312,6 +312,37 @@ void main() {
 
         expect(gateway.scheduled, isEmpty);
         expect(await NudgeRepository(db).listAll(), isEmpty);
+      });
+    });
+  });
+
+  group('about', () {
+    testWidgets('says where the model comes from and its licence', (
+      tester,
+    ) async {
+      await runWithApp(tester, () async {
+        await openSettings(tester);
+        await scrollTo(tester, 'Open source licences');
+
+        expect(
+          find.textContaining('Everything runs on your phone'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Apache 2.0'), findsOneWidget);
+      });
+    });
+
+    testWidgets('opens the open source licences page', (tester) async {
+      await runWithApp(tester, () async {
+        await openSettings(tester);
+        await scrollTo(tester, 'Open source licences');
+
+        await tester.tap(find.text('Open source licences'));
+        await settle(tester);
+
+        expect(find.byType(LicensePage), findsOneWidget);
+        expect(find.text('Do It or Dodge It'), findsWidgets);
+        expect(find.textContaining('MIT licence'), findsOneWidget);
       });
     });
   });

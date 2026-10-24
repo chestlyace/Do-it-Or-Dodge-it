@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Release signing comes from android/key.properties, which is never committed.
+// See docs/RELEASING.md for how to create it.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.containsKey("storeFile")
 
 android {
     namespace = "com.chestlyace.do_it_or_dodge_it"
@@ -35,11 +45,35 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                // Lets `flutter run --release` work without a key. An APK built
+                // like this is debug-signed and must not be published.
+                logger.warn(
+                    "WARNING: android/key.properties not found; " +
+                        "signing the release build with the debug key."
+                )
+                signingConfigs.getByName("debug")
+            }
+            // The release is not shrunk: the model is thousands of times larger
+            // than the code, and shrinking can silently strip notification
+            // icons and reflection-loaded classes that cannot be tested here.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

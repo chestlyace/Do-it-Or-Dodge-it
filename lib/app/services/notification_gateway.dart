@@ -3,6 +3,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+/// The status bar icon of a nudge: a white shape in `res/drawable`, not the
+/// launcher icon, which Android would draw as a plain square.
+const nudgeNotificationIcon = 'ic_stat_nudge';
+
 /// Everything the app needs from the local notifications plugin.
 ///
 /// `NudgeService` is the only code that holds one of these.
@@ -43,6 +47,7 @@ class LocalNotificationsGateway implements NotificationGateway {
     'nudges',
     'Nudges',
     channelDescription: 'Reminders about the next tiny step of a task',
+    icon: nudgeNotificationIcon,
     importance: Importance.defaultImportance,
     priority: Priority.defaultPriority,
   );
@@ -52,7 +57,7 @@ class LocalNotificationsGateway implements NotificationGateway {
     tz_data.initializeTimeZones();
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings(nudgeNotificationIcon),
       ),
       onDidReceiveNotificationResponse: (response) =>
           onTap?.call(response.payload),

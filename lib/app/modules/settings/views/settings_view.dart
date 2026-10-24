@@ -185,6 +185,27 @@ class SettingsView extends GetView<SettingsController> {
                 child: const Text('Clear tasks and history'),
               ),
             ),
+            _Header('About', theme),
+            const ListTile(
+              title: Text('Do It or Dodge It'),
+              subtitle: Text(
+                'Everything runs on your phone. The Gemma 4 model is '
+                'downloaded once from Hugging Face under the Apache 2.0 '
+                'licence.',
+              ),
+            ),
+            ListTile(
+              title: const Text('Open source licences'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLicensePage(
+                context: context,
+                applicationName: 'Do It or Dodge It',
+                applicationLegalese:
+                    'MIT licence. Copyright (c) 2026 Preshu. The Gemma 4 '
+                    'model is downloaded separately under the Apache 2.0 '
+                    'licence.',
+              ),
+            ),
           ],
         );
       }),

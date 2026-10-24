@@ -244,6 +244,14 @@ Controllers never call `flutter_edge_ai` or the database directly; they go throu
 
 **Accessibility.** The Do It and Dodge It buttons are labelled buttons with a hint that names the task. Headings and the nudge-limit slider are announced. The layouts hold up at twice the normal text size on a 360-pixel-wide phone, and the colours meet a 4.5:1 contrast ratio in the light and dark themes.
 
+## Release
+
+- **Signing:** the release APK is signed with a key from `android/key.properties`, which is never committed (see `docs/RELEASING.md`). Without it Gradle warns loudly and signs with the debug key, and `scripts/build_release.sh` refuses to run.
+- **Target:** 64-bit ARM only (`--target-platform android-arm64`), because the on-device model engine ships nothing else.
+- **Not shrunk:** code and resource shrinking are off. The model is thousands of times larger than the code, and shrinking can silently strip notification icons and reflection-loaded classes, which could not be tested without a device.
+- **Name and icons:** the app is called "Do It or Dodge It" with an adaptive launcher icon (a white check mark, with a themed variant) and a separate white status-bar icon for nudges; Android draws a status-bar icon in one colour, so the launcher icon would have been a plain square.
+- **Licences:** the code is MIT. The model is downloaded separately under Apache 2.0. Settings, Open source licences lists every package.
+
 ## Privacy, permissions and device requirements
 
 The only network call the app ever makes is the one-time model download; tasks, excuses, outcomes and predictor weights never leave the phone.
