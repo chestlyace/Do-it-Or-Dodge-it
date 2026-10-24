@@ -10,11 +10,13 @@ import '../../../data/repositories/step_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/nudge_service.dart';
+import '../../../services/predictor_service.dart';
 
 class HomeController extends GetxController {
   final _tasks = Get.find<TaskRepository>();
   final _steps = Get.find<StepRepository>();
   final _nudges = Get.find<NudgeService>();
+  final _predictor = Get.find<PredictorService>();
 
   final tasks = <Task>[].obs;
   final loading = true.obs;
@@ -85,6 +87,7 @@ class HomeController extends GetxController {
   /// Cancels the task's nudges first, so none fire for a deleted task.
   Future<void> remove(Task task) async {
     await _nudges.cancelFor(task.id);
+    await _predictor.forget(task.id);
     await _tasks.delete(task.id);
   }
 

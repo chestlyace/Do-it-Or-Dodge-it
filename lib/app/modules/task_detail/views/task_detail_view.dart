@@ -2,10 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/utils/task_display.dart';
+import '../../../data/models/risk.dart';
 import '../controllers/task_detail_controller.dart';
 
 class TaskDetailView extends GetView<TaskDetailController> {
   const TaskDetailView({super.key});
+
+  Widget _riskText(TaskDetailController controller, double? saved) {
+    final assessment = controller.assessment.value;
+    if (assessment == null) {
+      return Text(
+        saved == null ? 'Not scored yet' : '${(saved * 100).round()}%',
+      );
+    }
+    final basis = assessment.source == RiskSource.model
+        ? 'Learned from your last ${assessment.outcomesUsed} tasks'
+        : 'A starting guess until there is more history';
+    return Text('${assessment.percent}%\n${assessment.reason}\n$basis');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +34,6 @@ class TaskDetailView extends GetView<TaskDetailController> {
           return const Center(child: Text('This task could not be found.'));
         }
         final theme = Theme.of(context);
-        final risk = task.dodgeRisk;
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -43,9 +56,8 @@ class TaskDetailView extends GetView<TaskDetailController> {
               child: ListTile(
                 leading: const Icon(Icons.speed),
                 title: const Text('Dodge risk'),
-                subtitle: Text(
-                  risk == null ? 'Not scored yet' : '${(risk * 100).round()}%',
-                ),
+                subtitle: _riskText(controller, task.dodgeRisk),
+                isThreeLine: controller.assessment.value != null,
               ),
             ),
             if (controller.stepTotal.value > 0)

@@ -50,6 +50,9 @@ class OutcomeRepository {
   }
 
   /// Every outcome with its task, newest first.
+  Future<List<HistoryEntry>> listHistory() => watchHistory().first;
+
+  /// Every outcome with its task, newest first.
   Stream<List<HistoryEntry>> watchHistory() {
     final query = _db.select(_db.outcomes).join([
       innerJoin(_db.tasks, _db.tasks.id.equalsExp(_db.outcomes.taskId)),

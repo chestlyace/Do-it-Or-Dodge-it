@@ -17,6 +17,10 @@ abstract class SettingsKeys {
   /// Set once the notification permission has been asked for.
   static const notificationsAsked = 'notifications_asked';
 
+  /// Prefix for the features saved when the user chooses Do It or Dodge It:
+  /// `decision_snapshot:<taskId>`.
+  static const decisionSnapshotPrefix = 'decision_snapshot:';
+
   /// Prefix for stored nudge wording: `nudge_wording:<taskId>:<stepId>`.
   static const nudgeWordingPrefix = 'nudge_wording:';
 
