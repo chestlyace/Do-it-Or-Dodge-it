@@ -12,6 +12,9 @@ class OutcomeService extends GetxService {
   final TaskRepository _tasks;
   final OutcomeRepository _outcomes;
 
+  /// Called after a task is closed, for example to cancel its nudges.
+  Future<void> Function(int taskId)? onClosed;
+
   /// The last step was ticked. Returns false if the task was already closed.
   Future<bool> markDone(int taskId) =>
       _close(taskId, TaskStatus.done, OutcomeResult.done);
@@ -20,6 +23,10 @@ class OutcomeService extends GetxService {
   /// closed.
   Future<bool> markDodged(int taskId) =>
       _close(taskId, TaskStatus.dodged, OutcomeResult.dodged);
+
+  /// The due date passed with no progress. Returns false if already closed.
+  Future<bool> markAbandoned(int taskId) =>
+      _close(taskId, TaskStatus.abandoned, OutcomeResult.abandoned);
 
   Future<bool> _close(
     int taskId,
@@ -30,6 +37,7 @@ class OutcomeService extends GetxService {
     if (task == null || isClosed(task.status)) return false;
     await _tasks.updateStatus(taskId, status);
     await _outcomes.record(taskId: taskId, result: result);
+    await onClosed?.call(taskId);
     return true;
   }
 }

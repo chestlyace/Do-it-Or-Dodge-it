@@ -12,6 +12,7 @@ import 'services/device_info_service.dart';
 import 'services/edge_ai_model_runtime.dart';
 import 'services/gemma_service.dart';
 import 'services/model_runtime.dart';
+import 'services/notification_gateway.dart';
 import 'services/nudge_service.dart';
 import 'services/outcome_service.dart';
 import 'services/predictor_service.dart';
@@ -25,6 +26,9 @@ class InitialBinding extends Bindings {
     this.deviceInfo,
     this.checksumOf,
     this.shareService,
+    this.notifications,
+    this.backgroundScheduler,
+    this.clock,
   });
 
   final AppDatabase? database;
@@ -32,6 +36,9 @@ class InitialBinding extends Bindings {
   final DeviceInfoSource? deviceInfo;
   final Future<String> Function(String path)? checksumOf;
   final ShareService? shareService;
+  final NotificationGateway? notifications;
+  final BackgroundScheduler? backgroundScheduler;
+  final DateTime Function()? clock;
 
   @override
   void dependencies() {
@@ -56,15 +63,30 @@ class InitialBinding extends Bindings {
       permanent: true,
     );
     Get.put(PredictorService(), permanent: true);
-    Get.put(NudgeService(), permanent: true);
     Get.put(shareService ?? ShareService(), permanent: true);
-    Get.put(
+
+    final outcomes = Get.put(
       OutcomeService(
         tasks: Get.find<TaskRepository>(),
         outcomes: Get.find<OutcomeRepository>(),
       ),
       permanent: true,
     );
-    Get.put(BackgroundService(), permanent: true);
+    final nudges = Get.put(
+      NudgeService(
+        tasks: Get.find<TaskRepository>(),
+        steps: Get.find<StepRepository>(),
+        nudges: Get.find<NudgeRepository>(),
+        settings: Get.find<SettingsRepository>(),
+        outcomes: outcomes,
+        gateway: notifications ?? LocalNotificationsGateway(),
+        gemma: Get.find<GemmaService>(),
+        now: clock,
+      ),
+      permanent: true,
+    );
+    outcomes.onClosed = nudges.cancelFor;
+
+    Get.put(BackgroundService(scheduler: backgroundScheduler), permanent: true);
   }
 }

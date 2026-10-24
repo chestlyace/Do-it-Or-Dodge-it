@@ -34,6 +34,8 @@ void main() {
     database: db,
     modelRuntime: runtime,
     deviceInfo: FakeDeviceInfoSource(),
+    notifications: FakeNotificationGateway(),
+    backgroundScheduler: FakeBackgroundScheduler(),
     shareService: FakeShareService(),
   );
 

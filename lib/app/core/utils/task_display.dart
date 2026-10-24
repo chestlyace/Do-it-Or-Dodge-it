@@ -56,3 +56,10 @@ String categoryText(Task task) {
   }
   return task.category.label;
 }
+
+/// "3 Nov 2030, 09:05".
+String formatDateTime(DateTime time) {
+  final h = time.hour.toString().padLeft(2, '0');
+  final m = time.minute.toString().padLeft(2, '0');
+  return '${formatDate(time)}, $h:$m';
+}

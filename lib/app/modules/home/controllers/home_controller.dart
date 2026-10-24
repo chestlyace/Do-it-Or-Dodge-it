@@ -8,10 +8,13 @@ import '../../../data/db/seed_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/repositories/step_repository.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../routes/app_routes.dart';
+import '../../../services/nudge_service.dart';
 
 class HomeController extends GetxController {
   final _tasks = Get.find<TaskRepository>();
   final _steps = Get.find<StepRepository>();
+  final _nudges = Get.find<NudgeService>();
 
   final tasks = <Task>[].obs;
   final loading = true.obs;
@@ -25,6 +28,14 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     _listen();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // A tapped nudge that launched the app opens its task here.
+    final id = _nudges.takePendingOpen();
+    if (id != null) Get.toNamed(Routes.doIt, arguments: id);
   }
 
   void _listen() {
@@ -71,7 +82,11 @@ class HomeController extends GetxController {
   /// Debug only: inserts sample tasks.
   Future<void> seed() => seedSampleTasks(_tasks, _steps);
 
-  Future<void> remove(Task task) => _tasks.delete(task.id);
+  /// Cancels the task's nudges first, so none fire for a deleted task.
+  Future<void> remove(Task task) async {
+    await _nudges.cancelFor(task.id);
+    await _tasks.delete(task.id);
+  }
 
   @override
   void onClose() {

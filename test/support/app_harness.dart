@@ -14,23 +14,32 @@ class AppHarness {
     required this.runtime,
     required this.share,
     FakeDeviceInfoSource? device,
-  }) : device = device ?? FakeDeviceInfoSource();
+    FakeNotificationGateway? notifications,
+    FakeBackgroundScheduler? scheduler,
+  }) : device = device ?? FakeDeviceInfoSource(),
+       notifications = notifications ?? FakeNotificationGateway(),
+       scheduler = scheduler ?? FakeBackgroundScheduler();
 
   final AppDatabase db;
   final FakeModelRuntime runtime;
   final FakeShareService share;
   final FakeDeviceInfoSource device;
+  final FakeNotificationGateway notifications;
+  final FakeBackgroundScheduler scheduler;
+
+  /// The app on this harness's fakes.
+  Widget build() => DoItOrDodgeItApp(
+    database: db,
+    modelRuntime: runtime,
+    deviceInfo: device,
+    shareService: share,
+    notifications: notifications,
+    backgroundScheduler: scheduler,
+  );
 
   Future<void> start(WidgetTester tester) async {
     await installModelFixture(db, runtime);
-    await tester.pumpWidget(
-      DoItOrDodgeItApp(
-        database: db,
-        modelRuntime: runtime,
-        deviceInfo: device,
-        shareService: share,
-      ),
-    );
+    await tester.pumpWidget(build());
     await settle(tester);
   }
 

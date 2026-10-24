@@ -87,8 +87,8 @@ The stack is Flutter + GetX on Android, with Gemma running through the `flutter_
 | Model download | `flutter_edge_ai` built-in installer (foreground service for large files) | Confirmed | Resumes interrupted downloads and handles downloads over 500 MB without the Android timeout |
 | Local database | `drift` (SQLite) | Confirmed | Typed queries, generated classes, built-in migrations |
 | Dodge predictor | Logistic regression written in pure Dart | Proposed | Tiny, fast, trains on the phone, explainable |
-| Notifications | `flutter_local_notifications` | Proposed | Scheduled local notifications, no internet |
-| Background jobs | `workmanager` | Proposed | Daily re-plan of nudges and predictor retrain |
+| Notifications | `flutter_local_notifications` (+ `timezone`) | Confirmed | Scheduled local notifications, no internet. Needs core library desugaring on Android |
+| Background jobs | `workmanager` | Confirmed | Daily re-plan of nudges and predictor retrain |
 | Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Confirmed | Android share sheet and copy. A dismissed share sheet logs nothing |
 | File paths | `path_provider` | Proposed | Locate model file and DB |
 | RAM, free storage, connection type | Small Kotlin method channel (`ConnectivityManager`, `StatFs`, `ActivityManager`) | Confirmed | No extra Dart packages |
@@ -175,7 +175,7 @@ Six SQLite tables on the phone hold everything; `tasks` is the hub and every oth
 
 `NudgeService` turns each Do It task's dodge risk into a schedule of local notifications, and re-plans once a day so nudges keep coming even if the app is never opened.
 
-**How a schedule is built (proposed)**
+**How a schedule is built**
 
 1. When the user taps Do It, the service reads the task's dodge risk and due date.
 2. Higher risk means more nudges, closer together, with firmer wording (gentle → firm → last call).
@@ -190,7 +190,7 @@ Six SQLite tables on the phone hold everything; `tasks` is the hub and every oth
 - Inexact alarms are used, so the app does not need the Android exact-alarm permission.
 - Whether a nudge was opened is recorded in `nudges` for later tuning.
 
-The maximum is 6 nudges per day with quiet hours 21:00 to 09:00; the spacing per risk level is settled in Phase 6; wording for each level is generated once by Gemma per task and stored, so firing a notification never needs the model.
+The maximum is 6 nudges per day for a task, with quiet hours 21:00 to 09:00; wording for each level is generated once by Gemma per task and stored, so firing a notification never needs the model.
 
 ## Flutter project structure (GetX)
 
@@ -279,7 +279,11 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Database package | `drift` | Typed queries, generated classes, built-in migrations |
 | Predictor cold start | 20 outcomes; below that, the user's dodge rate for the task's category, or 0.5 if the category has no history | The logistic-regression model replaces the rule at 20 outcomes |
 | Task categories | Fixed list plus "Other" with free text | The free text is stored with the task; the predictor treats it as "Other". The list is set in Phase 2 |
-| Nudge limits | Max 6 per day; quiet hours 21:00 to 09:00 | Spacing per risk level is not yet decided and is settled in Phase 6 |
+| Nudge limits | Max 6 per day for a task; quiet hours 21:00 to 09:00 | Quiet hours are read from the `quiet_hours_start` and `quiet_hours_end` settings; the settings screen to change them arrives in Phase 8 |
+| Nudge spacing | Low risk (under 0.34): 2 a day about 6 hours apart. Medium (0.34 to 0.66): 4 a day about 3 hours apart. High (0.67 and up): 6 a day about 2 hours apart | Decided in Phase 6 |
+| Nudge planning window | The next 24 hours, planned again every day. A task without a due date is treated as due 3 days after it was created. A picked due date means the end of that day | Nothing is planned after the due time |
+| Nudge levels | Gentle far from the due time, firm within 24 hours (48 for high risk), last call for the final nudge that fits before the due time | |
+| Risk used until Phase 7 | A fixed 0.5 (medium) | The predictor replaces it |
 | Excuse tones | Polite, Casual, Funny, Formal | |
 | Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt and checked again in code with a keyword list (Phase 4) |
 | Languages | English only | |
@@ -296,7 +300,6 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 **Still open, settled in the phase that needs it**
 
 - [ ] Fixed category list (Phase 2)
-- [ ] Nudge spacing per risk level (Phase 6)
 - [ ] Go or no-go on speed after benchmarking the Note 20 Ultra (Phase 3)
 
 ## Hackathon fit
