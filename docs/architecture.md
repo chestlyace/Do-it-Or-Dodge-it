@@ -86,7 +86,7 @@ The stack is Flutter + GetX on Android, with Gemma running through the `flutter_
 | Model | Gemma 4 E2B and E4B (`.litertlm`), chosen per device | Confirmed | See Decisions |
 | Model download | `flutter_edge_ai` built-in installer (foreground service for large files) | Confirmed | Resumes interrupted downloads and handles downloads over 500 MB without the Android timeout |
 | Local database | `drift` (SQLite) | Confirmed | Typed queries, generated classes, built-in migrations |
-| Dodge predictor | Logistic regression written in pure Dart | Proposed | Tiny, fast, trains on the phone, explainable |
+| Dodge predictor | Logistic regression written in pure Dart | Confirmed | Tiny, fast, trains on the phone, explainable |
 | Notifications | `flutter_local_notifications` (+ `timezone`) | Confirmed | Scheduled local notifications, no internet. Needs core library desugaring on Android |
 | Background jobs | `workmanager` | Confirmed | Daily re-plan of nudges and predictor retrain |
 | Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Confirmed | Android share sheet and copy. A dismissed share sheet logs nothing |
@@ -131,28 +131,32 @@ The model's licence terms apply to the downloaded file; the file is downloaded d
 
 ## Dodge predictor
 
-A proposed logistic-regression model, written in Dart and trained on the phone, scores each task with a dodge risk from 0 to 1; that score sets how often and how firmly the app nudges.
+A logistic-regression model, written in Dart and trained on the phone, scores each task with a dodge risk from 0 to 1; that score sets how often and how firmly the app nudges.
 
 **Label:** an outcome row is `dodged` (1) or `done` (0). `abandoned` counts as dodged.
 
-**Proposed features** (all computed from local data):
+**Features** (all computed from local data, each scaled to about -1 to 1 so training needs no scaling):
 
 | Feature | Type |
 | --- | --- |
-| Category of the task | One-hot |
-| Days until due (none = large value) | Number |
-| Number of steps Gemma produced | Number |
-| Total estimated minutes | Number |
+| Category of the task | One-hot (12 values) |
+| Days until due (none = large value) | 0 to 1 over 30 days; no due date counts as 1 |
+| Number of steps Gemma produced | 0 to 1 over 7 steps |
+| Total estimated minutes | 0 to 1 over 2 hours |
 | Hour of day and day of week when created | Cyclic (sin/cos) |
-| User's past dodge rate for this category | Number |
-| User's dodge rate over the last 14 days | Number |
+| User's past dodge rate for this category | The rate minus 0.5, so no history is 0 |
+| User's dodge rate over the last 14 days | The rate minus 0.5, so no history is 0 |
 
 **Training and use**
 
-1. Retrain after each new outcome and in the daily background job; training on a few hundred rows takes milliseconds.
-2. Until there are enough outcomes, use a simple rule instead of the model (20 outcomes; see Decisions).
-3. Show the top reason next to the score, e.g. "You dodge admin tasks 70% of the time", using the largest weighted feature.
-4. Weights are stored in the database so the model survives restarts.
+1. Retrain after each new outcome and in the daily background job; training on a few hundred rows takes milliseconds (batch gradient descent with a small L2 penalty).
+2. Until there are 20 outcomes with saved features, use a simple rule instead of the model: the user's dodge rate for the task's category, or 50% if that category has no history.
+3. Show the top reason next to the score, e.g. "You dodge admin tasks 70% of the time", using the factor with the largest weighted value.
+4. Weights are stored in the `settings` table (`predictor_weights`) so the model survives restarts. A model trained on a different feature list is ignored.
+
+**Features are saved at decision time.** When the user taps Do It or Dodge It, the features are computed and kept in `settings` (`decision_snapshot:<taskId>`, first choice only). When the task is closed, that copy is saved as the outcome's feature snapshot, so training uses what the app knew when the user chose, not what it knew later. A task closed without a recorded choice gets its current features. Outcomes from before Phase 7 have no snapshot; they inform the simple rule but are not used for training.
+
+**Known limitation.** The step count and total minutes only exist after Do It has run, which is after the choice. For a new task they are 0 in the saved features, so the model cannot learn from them yet. They are kept because the architecture lists them, and they take effect when a task is chosen again after it already has steps. Using the features from when the task closes instead would let the model "learn" that finished tasks have steps and dodged ones do not, which is true only because of the path taken, and would make every new task look risky.
 
 Task categories come from a fixed list the user picks from; the list itself is settled in Phase 2, with an "Other" option that takes free text.
 

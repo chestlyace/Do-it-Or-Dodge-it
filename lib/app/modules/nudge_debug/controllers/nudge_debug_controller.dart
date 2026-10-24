@@ -7,6 +7,7 @@ import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../services/daily_job.dart';
 import '../../../services/nudge_service.dart';
+import '../../../services/predictor_service.dart';
 
 /// A nudge with the title of its task.
 class DebugNudge {
@@ -73,7 +74,10 @@ class NudgeDebugController extends GetxController {
   });
 
   Future<void> runDailyJob() => _run(() async {
-    final result = await DailyJob(service).run();
+    final result = await DailyJob(
+      service,
+      predictor: Get.find<PredictorService>(),
+    ).run();
     message.value = 'Daily job: $result.';
   });
 

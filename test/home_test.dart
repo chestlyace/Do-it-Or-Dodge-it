@@ -162,7 +162,10 @@ void main() {
 
       expect(Get.currentRoute, Routes.taskDetail);
       expect(find.text('Use the banking app'), findsOneWidget);
-      expect(find.text('Not scored yet'), findsOneWidget);
+      expect(
+        find.textContaining('Not enough history yet, so this starts at 50%.'),
+        findsOneWidget,
+      );
       expect(find.text('Do It'), findsOneWidget);
       expect(find.text('Dodge It'), findsOneWidget);
     });

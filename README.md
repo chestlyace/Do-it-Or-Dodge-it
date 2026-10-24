@@ -9,7 +9,7 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 6 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model, the four prompt jobs, the core screens, and nudges. You can add a task, then Do It (tiny steps, tick them off, draft help, and local notifications about your next step) or Dodge It (an excuse to copy or share), and see the history. The dodge-risk score and the settings screen come in later phases.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 7 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model, the four prompt jobs, the core screens, nudges, and the dodge predictor. You can add a task, see how likely you are to dodge it and why, then Do It (tiny steps, tick them off, draft help, and local notifications about your next step) or Dodge It (an excuse to copy or share), and see the history. The settings screen comes in a later phase.
 
 ## Requirements
 
@@ -40,6 +40,8 @@ On first launch the app offers Gemma 4 E2B (about 2.6 GB) or E4B (about 3.7 GB),
 **Benchmark:** long-press the **Home** title to open the hidden benchmark screen. Record the numbers in [`docs/benchmarks.md`](docs/benchmarks.md).
 
 **Nudges:** starting Do It schedules local notifications about the next undone step, paced by risk, never during quiet hours (21:00 to 09:00), and a daily background job plans them again. Long-press the title, then tap the bell icon, to see what is scheduled, turn on a **fast clock** (nudges 1, 2 and 3 minutes from now) and run the daily job by hand.
+
+**Dodge risk:** each task shows a score from 0 to 100% and a one-line reason. For your first 20 outcomes it is a simple rule (how often you dodged that category, else 50%); after that a small model trained on your own history takes over and is retrained after every outcome and every day. It all stays on the phone.
 
 **Prompt lab:** from the benchmark screen, tap the flask icon to run any prompt job with your own input, see the raw and parsed output, and run all four jobs on 20 sample tasks. Results go in [`docs/prompt-samples/`](docs/prompt-samples/README.md).
 

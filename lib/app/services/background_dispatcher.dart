@@ -13,6 +13,7 @@ import 'daily_job.dart';
 import 'notification_gateway.dart';
 import 'nudge_service.dart';
 import 'outcome_service.dart';
+import 'predictor_service.dart';
 
 /// Name of the daily job in WorkManager.
 const dailyJobName = 'daily-replan';
@@ -40,21 +41,32 @@ Future<DailyJobResult> runDailyJobInBackground() async {
   final db = AppDatabase();
   try {
     final tasks = TaskRepository(db);
+    final steps = StepRepository(db);
+    final outcomeRepo = OutcomeRepository(db);
+    final settings = SettingsRepository(db);
+    final predictor = PredictorService(
+      tasks: tasks,
+      steps: steps,
+      outcomes: outcomeRepo,
+      settings: settings,
+    );
     final outcomes = OutcomeService(
       tasks: tasks,
-      outcomes: OutcomeRepository(db),
+      outcomes: outcomeRepo,
+      predictor: predictor,
     );
     final nudges = NudgeService(
       tasks: tasks,
-      steps: StepRepository(db),
+      steps: steps,
       nudges: NudgeRepository(db),
-      settings: SettingsRepository(db),
+      settings: settings,
       outcomes: outcomes,
       gateway: LocalNotificationsGateway(),
+      predictor: predictor,
     );
     outcomes.onClosed = nudges.cancelFor;
     await nudges.init(handleTaps: false, maintain: false);
-    return await DailyJob(nudges).run();
+    return await DailyJob(nudges, predictor: predictor).run();
   } finally {
     await db.close();
   }

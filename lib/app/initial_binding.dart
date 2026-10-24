@@ -62,13 +62,23 @@ class InitialBinding extends Bindings {
       ),
       permanent: true,
     );
-    Get.put(PredictorService(), permanent: true);
+    final predictor = Get.put(
+      PredictorService(
+        tasks: Get.find<TaskRepository>(),
+        steps: Get.find<StepRepository>(),
+        outcomes: Get.find<OutcomeRepository>(),
+        settings: Get.find<SettingsRepository>(),
+        now: clock,
+      ),
+      permanent: true,
+    );
     Get.put(shareService ?? ShareService(), permanent: true);
 
     final outcomes = Get.put(
       OutcomeService(
         tasks: Get.find<TaskRepository>(),
         outcomes: Get.find<OutcomeRepository>(),
+        predictor: predictor,
       ),
       permanent: true,
     );
@@ -81,6 +91,7 @@ class InitialBinding extends Bindings {
         outcomes: outcomes,
         gateway: notifications ?? LocalNotificationsGateway(),
         gemma: Get.find<GemmaService>(),
+        predictor: predictor,
         now: clock,
       ),
       permanent: true,

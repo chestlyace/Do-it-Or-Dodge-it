@@ -16,6 +16,7 @@ import '../routes/app_routes.dart';
 import 'gemma_service.dart';
 import 'notification_gateway.dart';
 import 'outcome_service.dart';
+import 'predictor_service.dart';
 
 /// Turns each Do It task into a schedule of local notifications.
 ///
@@ -30,6 +31,7 @@ class NudgeService extends GetxService {
     required this._outcomes,
     required this._gateway,
     this._gemma,
+    this._predictor,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
@@ -42,6 +44,9 @@ class NudgeService extends GetxService {
 
   /// Null in the background job, which never loads the model.
   final GemmaService? _gemma;
+
+  /// Scores the task's dodge risk. Without one, the stored risk is used.
+  final PredictorService? _predictor;
   final DateTime Function() _now;
 
   /// False when the user turned notifications off for the app.
@@ -127,7 +132,7 @@ class NudgeService extends GetxService {
     final planned = planNudges(
       now: now,
       due: effectiveDue(dueAt: task.dueAt, createdAt: task.createdAt),
-      risk: task.dodgeRisk ?? placeholderRisk,
+      risk: await _riskOf(task),
       quiet: quiet,
       fastClock: fast,
     );
@@ -167,6 +172,18 @@ class NudgeService extends GetxService {
       _track(_writeWording(task, step));
     }
     return scheduled;
+  }
+
+  /// The risk that paces the nudges: the predictor's score, else the stored
+  /// one, else the placeholder.
+  Future<double> _riskOf(Task task) async {
+    try {
+      final predictor = _predictor;
+      if (predictor != null) return (await predictor.assess(task)).risk;
+    } catch (e) {
+      logNotificationError('risk', e);
+    }
+    return task.dodgeRisk ?? placeholderRisk;
   }
 
   /// Plans again for [taskId] from its current state. Used after a step is
