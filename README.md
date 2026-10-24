@@ -9,7 +9,7 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 3 are done: decisions, the project scaffold, the data layer, and the on-device Gemma 4 model (first-launch download, loading, and a benchmark screen). The task screens are still placeholders.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 4 are done: decisions, the project scaffold, the data layer, the on-device Gemma 4 model (first-launch download, loading, and a benchmark screen), and the four prompt jobs with JSON validation. The task screens are still placeholders.
 
 ## Requirements
 
@@ -38,6 +38,8 @@ dart run build_runner build
 On first launch the app offers Gemma 4 E2B (about 2.6 GB) or E4B (about 3.7 GB), recommending E4B only on phones with 8 GB of RAM or more. It downloads from public Hugging Face repos, so no account or token is needed. The download resumes if it is interrupted, runs in a foreground service, can be limited to Wi-Fi, and is checked against its SHA-256. After that the app works offline.
 
 **Benchmark:** long-press the **Home** title to open the hidden benchmark screen. Record the numbers in [`docs/benchmarks.md`](docs/benchmarks.md).
+
+**Prompt lab:** from the benchmark screen, tap the flask icon to run any prompt job with your own input, see the raw and parsed output, and run all four jobs on 20 sample tasks. Results go in [`docs/prompt-samples/`](docs/prompt-samples/README.md).
 
 In debug builds, the Home placeholder has a **Seed sample tasks** button. Tap a task to move it open, doing, done; long-press to delete it.
 

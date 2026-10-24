@@ -26,3 +26,15 @@ enum TaskCategory {
 
   final String label;
 }
+
+/// Tone offered for an excuse.
+enum ExcuseTone {
+  polite('Polite'),
+  casual('Casual'),
+  funny('Funny'),
+  formal('Formal');
+
+  const ExcuseTone(this.label);
+
+  final String label;
+}

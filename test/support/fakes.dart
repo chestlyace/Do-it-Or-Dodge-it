@@ -33,8 +33,30 @@ class FakeDeviceInfoSource implements DeviceInfoSource {
   );
 }
 
+class ModelCall {
+  const ModelCall(this.prompt, this.systemInstruction, this.maxOutputTokens);
+
+  final String prompt;
+  final String? systemInstruction;
+  final int? maxOutputTokens;
+}
+
 class FakeLoadedModel implements LoadedModel {
-  FakeLoadedModel(this.activeBackend, {this.tokens = const ['a', 'b', 'c']});
+  FakeLoadedModel(
+    this.activeBackend, {
+    this.tokens = const ['a', 'b', 'c'],
+    this.responder,
+    this.failWith,
+  });
+
+  /// When set, the reply is whatever this returns, streamed in small chunks.
+  final String Function(ModelCall call)? responder;
+
+  /// Makes [generate] throw this before streaming anything.
+  final Object? failWith;
+
+  /// Every generate call, in order.
+  final List<ModelCall> calls = [];
 
   @override
   final String activeBackend;
@@ -57,8 +79,19 @@ class FakeLoadedModel implements LoadedModel {
     lastPrompt = prompt;
     lastSystemInstruction = systemInstruction;
     lastMaxOutputTokens = maxOutputTokens;
+    final call = ModelCall(prompt, systemInstruction, maxOutputTokens);
+    calls.add(call);
     await gate?.future;
-    for (final token in tokens) {
+    final failure = failWith;
+    if (failure != null) throw failure;
+    final reply = responder?.call(call);
+    final chunks = reply == null
+        ? tokens
+        : [
+            for (var i = 0; i < reply.length; i += 12)
+              reply.substring(i, i + 12 > reply.length ? reply.length : i + 12),
+          ];
+    for (final token in chunks) {
       if (stopped) return;
       yield token;
     }
@@ -81,6 +114,15 @@ class FakeModelRuntime implements ModelRuntime {
   final List<String> uninstalled = [];
   final List<LoadOptions> loadCalls = [];
   final List<FakeLoadedModel> models = [];
+
+  /// Scripts the model's replies for every model this runtime loads.
+  String Function(ModelCall call)? responder;
+
+  /// Makes every generate call throw this.
+  Object? generateError;
+
+  /// Every generate call across all loaded models, in order.
+  List<ModelCall> get calls => [for (final m in models) ...m.calls];
 
   /// Backends that fail to load.
   final Set<ModelBackend> failingBackends = {};
@@ -136,6 +178,8 @@ class FakeModelRuntime implements ModelRuntime {
     }
     final model = FakeLoadedModel(
       options.backend == ModelBackend.cpu ? 'cpu' : 'gpu',
+      responder: responder,
+      failWith: generateError,
     );
     models.add(model);
     return model;
