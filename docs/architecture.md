@@ -76,21 +76,23 @@ Screens hold no logic beyond UI state. The Gemma service is the only code that t
 
 ## Tech stack
 
-The stack is Flutter + GetX on Android, with Gemma running through the `flutter_gemma` plugin and everything else stored and scheduled on the device.
+The stack is Flutter + GetX on Android, with Gemma running through the `flutter_edge_ai` plugin and everything else stored and scheduled on the device.
 
 | Layer | Choice | Status | Why |
 | --- | --- | --- | --- |
 | App framework | Flutter (Dart), Android target | Confirmed | Your choice |
 | State, routing, DI | `get` (GetX) | Confirmed | Your choice |
-| On-device LLM | [`flutter_gemma`](https://pub.dev/documentation/flutter_gemma/) core + `flutter_gemma_litertlm` engine | Proposed | Supports Gemma 4 E2B/E4B and Gemma 3n E2B/E4B on Android; engines are opt-in packages since 1.0 |
+| On-device LLM | [`flutter_edge_ai`](https://pub.dev/packages/flutter_edge_ai) core + `flutter_edge_ai_litertlm` engine | Confirmed | Successor to `flutter_gemma`, which is discontinued (1.11.4 was its last release). Runs Gemma 4 `.litertlm` files on the GPU with a CPU fallback |
 | Model | Gemma 4 E2B and E4B (`.litertlm`), chosen per device | Confirmed | See Decisions |
-| Model download | `flutter_gemma` built-in installer (foreground service for large files) | Proposed | Handles downloads over 500 MB without the Android timeout |
+| Model download | `flutter_edge_ai` built-in installer (foreground service for large files) | Confirmed | Resumes interrupted downloads and handles downloads over 500 MB without the Android timeout |
 | Local database | `drift` (SQLite) | Confirmed | Typed queries, generated classes, built-in migrations |
 | Dodge predictor | Logistic regression written in pure Dart | Proposed | Tiny, fast, trains on the phone, explainable |
 | Notifications | `flutter_local_notifications` | Proposed | Scheduled local notifications, no internet |
 | Background jobs | `workmanager` | Proposed | Daily re-plan of nudges and predictor retrain |
 | Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Proposed | Android share sheet and copy |
-| File paths, storage check | `path_provider` | Proposed | Locate model file and DB |
+| File paths | `path_provider` | Proposed | Locate model file and DB |
+| RAM, free storage, connection type | Small Kotlin method channel (`ConnectivityManager`, `StatFs`, `ActivityManager`) | Confirmed | No extra Dart packages |
+| Download check | `crypto` (SHA-256) | Added in Phase 3 | Verifies the downloaded file against its published checksum |
 
 No backend, no cloud services and no API keys are part of the running app.
 
@@ -223,7 +225,7 @@ lib/
       (each module: bindings/, controllers/, views/)
 ```
 
-Controllers never call `flutter_gemma` or the database directly; they go through services and repositories, so the model or the DB package can be swapped later.
+Controllers never call `flutter_edge_ai` or the database directly; they go through services and repositories, so the model or the DB package can be swapped later.
 
 ## Privacy, permissions and device requirements
 
@@ -234,7 +236,9 @@ The only network call the app ever makes is the one-time model download; tasks, 
 | Permission | Why |
 | --- | --- |
 | `INTERNET` | Model download only |
-| `FOREGROUND_SERVICE` (data sync type) | Keep the large download running |
+| `ACCESS_NETWORK_STATE` | Wi-Fi-only download check |
+| `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_DATA_SYNC` | Keep the large download running |
+| `WAKE_LOCK` | Keep the download alive while the screen is off |
 | `POST_NOTIFICATIONS` | Nudges, Android 13 and later |
 | `RECEIVE_BOOT_COMPLETED` | Re-register nudges after a restart |
 
@@ -244,7 +248,7 @@ No contacts, calendar, microphone, location or exact-alarm permission is request
 
 - Free storage: enough for the model file plus headroom; the exact figure depends on the model chosen (Decisions).
 - RAM: an on-device Gemma 3n E2B build lists 4 GB of RAM as the recommended minimum ([agent-gemma model card](https://huggingface.co/kontextdev/agent-gemma/blob/main/README.md)); the final floor should be set after testing on a real low-end phone.
-- Minimum Android version: Android 10 (API 29). Minimum RAM: 4 GB.
+- Minimum Android version: Android 11 (API 30), because LiteRT-LM needs it. Minimum RAM: 4 GB. Only `arm64-v8a` phones are supported.
 
 ## Risks and mitigations
 
@@ -259,7 +263,7 @@ The biggest risks are phone hardware and the multi-gigabyte download; the rest a
 | Predictor has too little data early on | Bad risk scores | Rule-based fallback until enough outcomes |
 | Android kills background work | Nudges stop | Scheduled notifications plus daily re-plan; reboot receiver |
 | Excuses read as dishonest or harmful | Reputation, misuse | Keep excuses light and low-stakes by default; app never sends them itself |
-| `flutter_gemma` API changes | Build breaks | Pin the version; wrap it in `GemmaService` |
+| `flutter_edge_ai` API changes | Build breaks | Pin the version; wrap it in `GemmaService` and `ModelRuntime` |
 
 ## Decisions (Phase 0)
 
@@ -268,7 +272,7 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Topic | Decision | Consequence |
 | --- | --- | --- |
 | Gemma family and variants | Gemma 4, E2B and E4B | Onboarding offers both and recommends one from the phone's RAM and free storage; the user can override |
-| Model hosting | Hugging Face direct | Gemma is licence-gated, so the download needs the licence accepted and a token; how the user supplies it is settled in Phase 3 |
+| Model hosting | Hugging Face direct | The Gemma 4 `litert-community` repos are public (Apache 2.0), so no token is needed and none ships in the app. Files are pinned to a commit and checked against their SHA-256: E2B 2,588,147,712 bytes, E4B 3,659,530,240 bytes |
 | Database package | `drift` | Typed queries, generated classes, built-in migrations |
 | Predictor cold start | 20 outcomes; below that, the user's dodge rate for the task's category, or 0.5 if the category has no history | The logistic-regression model replaces the rule at 20 outcomes |
 | Task categories | Fixed list plus "Other" with free text | The free text is stored with the task; the predictor treats it as "Other". The list is set in Phase 2 |
@@ -276,8 +280,10 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Excuse tones | Polite, Casual, Funny, Formal | |
 | Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt (Phase 4) |
 | Languages | English only | |
-| Minimum Android version | Android 10 (API 29) | `minSdkVersion` 29 |
-| Minimum RAM | 4 GB | Onboarding warns below this; E4B is only recommended on phones with more RAM (threshold set in Phase 3) |
+| Minimum Android version | Android 11 (API 30) | Changed in Phase 3 from API 29: `.litertlm` models need API 30. `minSdk` is 30 |
+| Minimum RAM | 4 GB | Onboarding warns below this |
+| Model recommendation | E4B at 8 GB of RAM or more, otherwise E2B | The user can override. Free storage needed is the file size plus 1 GB. Thresholds are revisited after benchmarking |
+| Inference package | `flutter_edge_ai` + `flutter_edge_ai_litertlm` | Changed in Phase 3: `flutter_gemma` and its LiteRT-LM engine are discontinued |
 | Project location | Flutter app at the repository root | Phase 1 runs `flutter create .` in the repo, not in a subfolder |
 | Wi-Fi-only download | On by default | User can switch it off |
 | App name | Do It or Dodge It | Unchanged |
@@ -288,8 +294,7 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 
 - [ ] Fixed category list (Phase 2)
 - [ ] Nudge spacing per risk level (Phase 6)
-- [ ] RAM and storage thresholds for recommending E2B vs E4B, and whether `flutter_gemma` supports Gemma 4 files (Phase 3)
-- [ ] How the user provides the Hugging Face token or licence acceptance (Phase 3)
+- [ ] Go or no-go on speed after benchmarking the Note 20 Ultra (Phase 3)
 
 ## Hackathon fit
 
@@ -304,6 +309,6 @@ The app fits the HF26 prompt directly (open-weight model, local inference) and q
 ## Sources
 
 - [HF26 DEV Challenge Hub](https://dev.to/challenges/hf26)
-- [flutter\_gemma documentation](https://pub.dev/documentation/flutter_gemma/)
+- [flutter\_edge\_ai on pub.dev](https://pub.dev/packages/flutter_edge_ai)
 - [LiteRT-LM overview, Google AI Edge](https://ai.google.dev/edge/litert-lm/overview)
 - [agent-gemma model card (Gemma 3n E2B, LiteRT-LM)](https://huggingface.co/kontextdev/agent-gemma/blob/main/README.md)

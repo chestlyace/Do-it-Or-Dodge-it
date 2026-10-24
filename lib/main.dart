@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/data/db/app_database.dart';
 import 'app/initial_binding.dart';
+import 'app/services/device_info_service.dart';
+import 'app/services/model_runtime.dart';
 import 'app/routes/app_pages.dart';
 
 void main() {
@@ -11,10 +13,19 @@ void main() {
 }
 
 class DoItOrDodgeItApp extends StatelessWidget {
-  const DoItOrDodgeItApp({super.key, this.database});
+  const DoItOrDodgeItApp({
+    super.key,
+    this.database,
+    this.modelRuntime,
+    this.deviceInfo,
+    this.checksumOf,
+  });
 
-  /// Pass a test database; the app opens its own on the phone when null.
+  /// Tests pass fakes; on the phone these are null and the real ones are used.
   final AppDatabase? database;
+  final ModelRuntime? modelRuntime;
+  final DeviceInfoSource? deviceInfo;
+  final Future<String> Function(String path)? checksumOf;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +34,12 @@ class DoItOrDodgeItApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      initialBinding: InitialBinding(database: database),
+      initialBinding: InitialBinding(
+        database: database,
+        modelRuntime: modelRuntime,
+        deviceInfo: deviceInfo,
+        checksumOf: checksumOf,
+      ),
       initialRoute: AppPages.initial,
       getPages: AppPages.routes,
     );

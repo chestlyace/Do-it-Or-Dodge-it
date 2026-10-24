@@ -6,6 +6,8 @@ import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/task_detail/bindings/task_detail_binding.dart';
 import '../modules/task_detail/views/task_detail_view.dart';
+import '../modules/benchmark/bindings/benchmark_binding.dart';
+import '../modules/benchmark/views/benchmark_view.dart';
 import '../modules/do_it/bindings/do_it_binding.dart';
 import '../modules/do_it/views/do_it_view.dart';
 import '../modules/dodge_it/bindings/dodge_it_binding.dart';
@@ -19,7 +21,7 @@ import 'app_routes.dart';
 abstract class AppPages {
   AppPages._();
 
-  static const initial = Routes.home;
+  static const initial = Routes.onboarding;
 
   static final routes = <GetPage<dynamic>>[
     GetPage(
@@ -56,6 +58,11 @@ abstract class AppPages {
       name: Routes.settings,
       page: () => const SettingsView(),
       binding: SettingsBinding(),
+    ),
+    GetPage(
+      name: Routes.benchmark,
+      page: () => const BenchmarkView(),
+      binding: BenchmarkBinding(),
     ),
   ];
 }

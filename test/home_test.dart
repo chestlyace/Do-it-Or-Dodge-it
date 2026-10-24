@@ -4,11 +4,17 @@ import 'package:do_it_or_dodge_it/app/data/db/app_database.dart';
 import 'package:do_it_or_dodge_it/main.dart';
 
 import 'data/test_database.dart';
+import 'support/fakes.dart';
 
 void main() {
   late AppDatabase db;
+  late FakeModelRuntime runtime;
 
-  setUp(() => db = createTestDatabase());
+  setUp(() async {
+    db = createTestDatabase();
+    runtime = FakeModelRuntime();
+    await installModelFixture(db, runtime);
+  });
 
   tearDown(() async {
     Get.reset();
@@ -20,8 +26,14 @@ void main() {
   ) async {
     // Drift streams use timers; run in real async to let them settle.
     await tester.runAsync(() async {
-      await tester.pumpWidget(DoItOrDodgeItApp(database: db));
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(
+        DoItOrDodgeItApp(
+          database: db,
+          modelRuntime: runtime,
+          deviceInfo: FakeDeviceInfoSource(),
+        ),
+      );
+      await settle(tester);
       expect(find.text('No tasks yet'), findsOneWidget);
 
       await tester.tap(find.text('Seed sample tasks'));

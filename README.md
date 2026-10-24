@@ -9,13 +9,13 @@ After a one-time model download, the app works offline and no task data leaves t
 
 ## Status
 
-Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 2 are done: decisions, the project scaffold, and the data layer (six SQLite tables via drift, with repositories and tests). The screens are still placeholders.
+Under construction, built in phases. See [`docs/architecture.md`](docs/architecture.md) for the design and the decisions made so far. Phases 0 to 3 are done: decisions, the project scaffold, the data layer, and the on-device Gemma 4 model (first-launch download, loading, and a benchmark screen). The task screens are still placeholders.
 
 ## Requirements
 
 - Flutter (stable channel) and the Android SDK; `flutter doctor` should be clean
-- An Android 10 (API 29) or newer phone with USB debugging enabled
-- 4 GB of RAM or more for on-device Gemma (used from Phase 3)
+- An arm64 Android 11 (API 30) or newer phone with USB debugging enabled
+- 4 GB of RAM or more for on-device Gemma, and 3 to 5 GB of free storage for the model
 
 ## Run
 
@@ -32,6 +32,12 @@ The drift database code (`app_database.g.dart`) is committed. After changing `li
 ```bash
 dart run build_runner build
 ```
+
+## The model
+
+On first launch the app offers Gemma 4 E2B (about 2.6 GB) or E4B (about 3.7 GB), recommending E4B only on phones with 8 GB of RAM or more. It downloads from public Hugging Face repos, so no account or token is needed. The download resumes if it is interrupted, runs in a foreground service, can be limited to Wi-Fi, and is checked against its SHA-256. After that the app works offline.
+
+**Benchmark:** long-press the **Home** title to open the hidden benchmark screen. Record the numbers in [`docs/benchmarks.md`](docs/benchmarks.md).
 
 In debug builds, the Home placeholder has a **Seed sample tasks** button. Tap a task to move it open, doing, done; long-press to delete it.
 
