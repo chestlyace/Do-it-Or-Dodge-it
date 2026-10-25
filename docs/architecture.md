@@ -86,10 +86,10 @@ The stack is Flutter + GetX on Android, with Gemma running through the `flutter_
 | Model | Gemma 4 E2B and E4B (`.litertlm`), chosen per device | Confirmed | See Decisions |
 | Model download | `flutter_edge_ai` built-in installer (foreground service for large files) | Confirmed | Resumes interrupted downloads and handles downloads over 500 MB without the Android timeout |
 | Local database | `drift` (SQLite) | Confirmed | Typed queries, generated classes, built-in migrations |
-| Dodge predictor | Logistic regression written in pure Dart | Proposed | Tiny, fast, trains on the phone, explainable |
-| Notifications | `flutter_local_notifications` | Proposed | Scheduled local notifications, no internet |
-| Background jobs | `workmanager` | Proposed | Daily re-plan of nudges and predictor retrain |
-| Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Proposed | Android share sheet and copy |
+| Dodge predictor | Logistic regression written in pure Dart | Confirmed | Tiny, fast, trains on the phone, explainable |
+| Notifications | `flutter_local_notifications` (+ `timezone`) | Confirmed | Scheduled local notifications, no internet. Needs core library desugaring on Android |
+| Background jobs | `workmanager` | Confirmed | Two jobs: the daily re-plan and predictor retrain (no model), and a pre-generation job that only runs while the phone is charging |
+| Sharing excuses | `share_plus` + `Clipboard` (Flutter services) | Confirmed | Android share sheet and copy. A dismissed share sheet logs nothing |
 | File paths | `path_provider` | Proposed | Locate model file and DB |
 | RAM, free storage, connection type | Small Kotlin method channel (`ConnectivityManager`, `StatFs`, `ActivityManager`) | Confirmed | No extra Dart packages |
 | Download check | `crypto` (SHA-256) | Added in Phase 3 | Verifies the downloaded file against its published checksum |
@@ -98,7 +98,7 @@ No backend, no cloud services and no API keys are part of the running app.
 
 ## On-device AI: Gemma
 
-One `GemmaService` owns the model: it downloads it once, loads it on demand, and exposes three prompt jobs that all return validated JSON.
+One `GemmaService` owns the model: it downloads it once, loads it on demand, and exposes four prompt jobs that all return validated JSON.
 
 **Model lifecycle**
 
@@ -115,12 +115,15 @@ One `GemmaService` owns the model: it downloads it once, loads it on demand, and
 | `shrinkTask` | Task title, note, due date | 3 to 7 steps, each with a title and an estimated minutes value; step 1 must take under 2 minutes |
 | `helpWithStep` | Task, the chosen step | A draft (email, message, outline) the user can copy |
 | `writeExcuse` | Task, who it is for, tone, excuses already used for that person | One excuse, plus a shorter variant |
+| `nudgeWording` | Task, the next step | Gentle, firm and last-call notification text, each one sentence of at most 100 characters |
 
 **Rules for every job**
 
 - System instruction fixes the job and the JSON shape.
 - Responses stream to the UI; JSON is parsed when the stream ends.
-- Invalid JSON → one automatic retry with a stricter instruction, then show the raw text.
+- Invalid JSON, or JSON that breaks a rule (wrong number of steps, first step 2 minutes or more, empty field) → one automatic retry with a stricter instruction, then the raw text is returned as a fallback. Bad model output never throws.
+- Every job caps its output length: `shrinkTask` 400 tokens, `helpWithStep` 450, `writeExcuse` 220, `nudgeWording` 160.
+- `writeExcuse` also rejects, and retries, a reply that mentions health, death, legal trouble or an emergency, or that repeats one of the last 5 excuses for that person.
 - Prompts stay short; history passed to `writeExcuse` is capped at the last 5 excuses for that person.
 - The user can stop generation at any time.
 
@@ -128,28 +131,32 @@ The model's licence terms apply to the downloaded file; the file is downloaded d
 
 ## Dodge predictor
 
-A proposed logistic-regression model, written in Dart and trained on the phone, scores each task with a dodge risk from 0 to 1; that score sets how often and how firmly the app nudges.
+A logistic-regression model, written in Dart and trained on the phone, scores each task with a dodge risk from 0 to 1; that score sets how often and how firmly the app nudges.
 
 **Label:** an outcome row is `dodged` (1) or `done` (0). `abandoned` counts as dodged.
 
-**Proposed features** (all computed from local data):
+**Features** (all computed from local data, each scaled to about -1 to 1 so training needs no scaling):
 
 | Feature | Type |
 | --- | --- |
-| Category of the task | One-hot |
-| Days until due (none = large value) | Number |
-| Number of steps Gemma produced | Number |
-| Total estimated minutes | Number |
+| Category of the task | One-hot (12 values) |
+| Days until due (none = large value) | 0 to 1 over 30 days; no due date counts as 1 |
+| Number of steps Gemma produced | 0 to 1 over 7 steps |
+| Total estimated minutes | 0 to 1 over 2 hours |
 | Hour of day and day of week when created | Cyclic (sin/cos) |
-| User's past dodge rate for this category | Number |
-| User's dodge rate over the last 14 days | Number |
+| User's past dodge rate for this category | The rate minus 0.5, so no history is 0 |
+| User's dodge rate over the last 14 days | The rate minus 0.5, so no history is 0 |
 
 **Training and use**
 
-1. Retrain after each new outcome and in the daily background job; training on a few hundred rows takes milliseconds.
-2. Until there are enough outcomes, use a simple rule instead of the model (20 outcomes; see Decisions).
-3. Show the top reason next to the score, e.g. "You dodge admin tasks 70% of the time", using the largest weighted feature.
-4. Weights are stored in the database so the model survives restarts.
+1. Retrain after each new outcome and in the daily background job; training on a few hundred rows takes milliseconds (batch gradient descent with a small L2 penalty).
+2. Until there are 20 outcomes with saved features, use a simple rule instead of the model: the user's dodge rate for the task's category, or 50% if that category has no history.
+3. Show the top reason next to the score, e.g. "You dodge admin tasks 70% of the time", using the factor with the largest weighted value.
+4. Weights are stored in the `settings` table (`predictor_weights`) so the model survives restarts. A model trained on a different feature list is ignored.
+
+**Features are saved at decision time.** When the user taps Do It or Dodge It, the features are computed and kept in `settings` (`decision_snapshot:<taskId>`, first choice only). When the task is closed, that copy is saved as the outcome's feature snapshot, so training uses what the app knew when the user chose, not what it knew later. A task closed without a recorded choice gets its current features. Outcomes from before Phase 7 have no snapshot; they inform the simple rule but are not used for training.
+
+**Known limitation.** The step count and total minutes only exist after Do It has run, which is after the choice. For a new task they are 0 in the saved features, so the model cannot learn from them yet. They are kept because the architecture lists them, and they take effect when a task is chosen again after it already has steps. Using the features from when the task closes instead would let the model "learn" that finished tasks have steps and dodged ones do not, which is true only because of the path taken, and would make every new task look risky.
 
 Task categories come from a fixed list the user picks from; the list itself is settled in Phase 2, with an "Other" option that takes free text.
 
@@ -172,7 +179,7 @@ Six SQLite tables on the phone hold everything; `tasks` is the hub and every oth
 
 `NudgeService` turns each Do It task's dodge risk into a schedule of local notifications, and re-plans once a day so nudges keep coming even if the app is never opened.
 
-**How a schedule is built (proposed)**
+**How a schedule is built**
 
 1. When the user taps Do It, the service reads the task's dodge risk and due date.
 2. Higher risk means more nudges, closer together, with firmer wording (gentle → firm → last call).
@@ -187,7 +194,7 @@ Six SQLite tables on the phone hold everything; `tasks` is the hub and every oth
 - Inexact alarms are used, so the app does not need the Android exact-alarm permission.
 - Whether a nudge was opened is recorded in `nudges` for later tuning.
 
-The maximum is 6 nudges per day with quiet hours 21:00 to 09:00; the spacing per risk level is settled in Phase 6; wording for each level is generated once by Gemma per task and stored, so firing a notification never needs the model.
+The maximum is 6 nudges per day for a task, with quiet hours 21:00 to 09:00; wording for each level is generated once by Gemma per task and stored, so firing a notification never needs the model.
 
 ## Flutter project structure (GetX)
 
@@ -227,6 +234,24 @@ lib/
 
 Controllers never call `flutter_edge_ai` or the database directly; they go through services and repositories, so the model or the DB package can be swapped later.
 
+## Settings and polish
+
+**Settings screen** (Home, gear icon): quiet hours (start and end), the most nudges a task gets in a day (1 to 6, which can only lower what the risk band allows), Wi-Fi-only download, model information (name, version, size, whether it runs on the GPU or CPU), **Delete model** and **Clear tasks and history**. Quiet hours and the nudge limit re-plan the pending nudges straight away, so nothing needs a restart. Deleting the model returns to the download screen and keeps your tasks. Clearing data deletes every task, step, excuse, nudge and outcome, cancels the notifications, and forgets the dodge predictor and everything saved for it; the model and the preferences stay.
+
+**Pre-generation.** A second background job runs once a day and only while the phone is charging (and the battery is not low). It loads the model, writes the notification text for the next step of each task being worked on, writes one general excuse in a Polite tone (for "someone", no name) for each open task, and frees the model. At most 8 tasks are handled per run. Dodge It shows that excuse at once when it exists. The user still says who it is for before copying or sharing, and an excuse already used for that person in their last 5 is not reused. Picking another tone or tapping Regenerate writes a tailored one as usual.
+
+**When the phone cannot load the model**, the app says so plainly ("This phone could not load the model. It may not have enough free memory...") instead of showing a raw error, and the technical detail is kept for bug reports.
+
+**Accessibility.** The Do It and Dodge It buttons are labelled buttons with a hint that names the task. Headings and the nudge-limit slider are announced. The layouts hold up at twice the normal text size on a 360-pixel-wide phone, and the colours meet a 4.5:1 contrast ratio in the light and dark themes.
+
+## Release
+
+- **Signing:** the release APK is signed with a key from `android/key.properties`, which is never committed (see `docs/RELEASING.md`). Without it Gradle warns loudly and signs with the debug key, and `scripts/build_release.sh` refuses to run.
+- **Target:** 64-bit ARM only (`--target-platform android-arm64`), because the on-device model engine ships nothing else.
+- **Not shrunk:** code and resource shrinking are off. The model is thousands of times larger than the code, and shrinking can silently strip notification icons and reflection-loaded classes, which could not be tested without a device.
+- **Name and icons:** the app is called "Do It or Dodge It" with an adaptive launcher icon (a white check mark, with a themed variant) and a separate white status-bar icon for nudges; Android draws a status-bar icon in one colour, so the launcher icon would have been a plain square.
+- **Licences:** the code is MIT. The model is downloaded separately under Apache 2.0. Settings, Open source licences lists every package.
+
 ## Privacy, permissions and device requirements
 
 The only network call the app ever makes is the one-time model download; tasks, excuses, outcomes and predictor weights never leave the phone.
@@ -241,6 +266,7 @@ The only network call the app ever makes is the one-time model download; tasks, 
 | `WAKE_LOCK` | Keep the download alive while the screen is off |
 | `POST_NOTIFICATIONS` | Nudges, Android 13 and later |
 | `RECEIVE_BOOT_COMPLETED` | Re-register nudges after a restart |
+| `WAKE_LOCK`, `ACCESS_NETWORK_STATE` | Keep the model download running, and check for Wi-Fi |
 
 No contacts, calendar, microphone, location or exact-alarm permission is requested.
 
@@ -276,10 +302,14 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 | Database package | `drift` | Typed queries, generated classes, built-in migrations |
 | Predictor cold start | 20 outcomes; below that, the user's dodge rate for the task's category, or 0.5 if the category has no history | The logistic-regression model replaces the rule at 20 outcomes |
 | Task categories | Fixed list plus "Other" with free text | The free text is stored with the task; the predictor treats it as "Other". The list is set in Phase 2 |
-| Nudge limits | Max 6 per day; quiet hours 21:00 to 09:00 | Spacing per risk level is not yet decided and is settled in Phase 6 |
+| Nudge limits | Max 6 per day for a task; quiet hours 21:00 to 09:00 | Quiet hours are read from the `quiet_hours_start` and `quiet_hours_end` settings; the settings screen to change them arrives in Phase 8 |
+| Nudge spacing | Low risk (under 0.34): 2 a day about 6 hours apart. Medium (0.34 to 0.66): 4 a day about 3 hours apart. High (0.67 and up): 6 a day about 2 hours apart | Decided in Phase 6 |
+| Nudge planning window | The next 24 hours, planned again every day. A task without a due date is treated as due 3 days after it was created. A picked due date means the end of that day | Nothing is planned after the due time |
+| Nudge levels | Gentle far from the due time, firm within 24 hours (48 for high risk), last call for the final nudge that fits before the due time | |
+| Risk used until Phase 7 | A fixed 0.5 (medium) | The predictor replaces it |
 | Excuse tones | Polite, Casual, Funny, Formal | |
-| Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt (Phase 4) |
-| Languages | English only | |
+| Excuse off-limits | No health, death, legal or emergency excuses | Enforced in the `writeExcuse` prompt and checked again in code with a keyword list (Phase 4) |
+| Languages | English only | Phase 8 applied it: there is one set of English text and English prompts, and no language switch |
 | Minimum Android version | Android 11 (API 30) | Changed in Phase 3 from API 29: `.litertlm` models need API 30. `minSdk` is 30 |
 | Minimum RAM | 4 GB | Onboarding warns below this |
 | Model recommendation | E4B at 8 GB of RAM or more, otherwise E2B | The user can override. Free storage needed is the file size plus 1 GB. Thresholds are revisited after benchmarking |
@@ -293,7 +323,6 @@ The open decisions were answered in Phase 0; the "proposed" items in this doc st
 **Still open, settled in the phase that needs it**
 
 - [ ] Fixed category list (Phase 2)
-- [ ] Nudge spacing per risk level (Phase 6)
 - [ ] Go or no-go on speed after benchmarking the Note 20 Ultra (Phase 3)
 
 ## Hackathon fit

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../routes/app_routes.dart';
 import '../../../services/model_runtime.dart';
 import '../controllers/benchmark_controller.dart';
 
@@ -13,6 +14,16 @@ class BenchmarkView extends GetView<BenchmarkController> {
       appBar: AppBar(
         title: const Text('Benchmark'),
         actions: [
+          IconButton(
+            tooltip: 'Nudges',
+            icon: const Icon(Icons.notifications),
+            onPressed: () => Get.toNamed(Routes.nudgeDebug),
+          ),
+          IconButton(
+            tooltip: 'Prompt lab',
+            icon: const Icon(Icons.science),
+            onPressed: () => Get.toNamed(Routes.promptLab),
+          ),
           IconButton(
             tooltip: 'Copy results',
             icon: const Icon(Icons.copy),

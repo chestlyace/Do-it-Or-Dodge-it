@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keeps the icons even if resource shrinking is ever turned on: a notification
+     whose icon was removed never shows, with no error. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_nudge,@drawable/ic_launcher_foreground,@mipmap/ic_launcher,@color/ic_launcher_background" />

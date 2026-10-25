@@ -240,7 +240,7 @@ void main() {
 
     test('throws when the CPU fails too', () async {
       runtime.failingBackends.addAll(ModelBackend.values);
-      await expectLater(service.load(), throwsStateError);
+      await expectLater(service.load(), throwsA(isA<ModelLoadException>()));
       expect(service.isLoaded.value, isFalse);
     });
 

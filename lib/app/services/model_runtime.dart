@@ -83,3 +83,20 @@ class DownloadCancelled implements Exception {
   @override
   String toString() => 'The download was cancelled.';
 }
+
+/// The model could not be loaded on this phone, on the GPU or the CPU.
+///
+/// [message] is written for the user; [detail] is for logs and bug reports.
+class ModelLoadException implements Exception {
+  const ModelLoadException(this.detail);
+
+  static const message =
+      'This phone could not load the model. It may not have enough free '
+      'memory. Close other apps and try again, or pick the smaller model in '
+      'Settings.';
+
+  final String detail;
+
+  @override
+  String toString() => message;
+}

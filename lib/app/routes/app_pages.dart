@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../modules/nudge_debug/bindings/nudge_debug_binding.dart';
+import '../modules/nudge_debug/views/nudge_debug_view.dart';
 import '../modules/onboarding/bindings/onboarding_binding.dart';
 import '../modules/onboarding/views/onboarding_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -14,6 +16,8 @@ import '../modules/dodge_it/bindings/dodge_it_binding.dart';
 import '../modules/dodge_it/views/dodge_it_view.dart';
 import '../modules/history/bindings/history_binding.dart';
 import '../modules/history/views/history_view.dart';
+import '../modules/prompt_lab/bindings/prompt_lab_binding.dart';
+import '../modules/prompt_lab/views/prompt_lab_view.dart';
 import '../modules/settings/bindings/settings_binding.dart';
 import '../modules/settings/views/settings_view.dart';
 import 'app_routes.dart';
@@ -63,6 +67,16 @@ abstract class AppPages {
       name: Routes.benchmark,
       page: () => const BenchmarkView(),
       binding: BenchmarkBinding(),
+    ),
+    GetPage(
+      name: Routes.promptLab,
+      page: () => const PromptLabView(),
+      binding: PromptLabBinding(),
+    ),
+    GetPage(
+      name: Routes.nudgeDebug,
+      page: () => const NudgeDebugView(),
+      binding: NudgeDebugBinding(),
     ),
   ];
 }

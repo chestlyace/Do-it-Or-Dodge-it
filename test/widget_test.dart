@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
@@ -6,6 +7,7 @@ import 'package:do_it_or_dodge_it/app/routes/app_routes.dart';
 import 'package:do_it_or_dodge_it/app/services/background_service.dart';
 import 'package:do_it_or_dodge_it/app/services/gemma_service.dart';
 import 'package:do_it_or_dodge_it/app/services/nudge_service.dart';
+import 'package:do_it_or_dodge_it/app/services/outcome_service.dart';
 import 'package:do_it_or_dodge_it/app/services/predictor_service.dart';
 import 'package:do_it_or_dodge_it/app/services/share_service.dart';
 import 'package:do_it_or_dodge_it/main.dart';
@@ -28,48 +30,64 @@ void main() {
     await db.close();
   });
 
-  testWidgets('registers every service at startup', (tester) async {
-    await tester.pumpWidget(
-      DoItOrDodgeItApp(
-        database: db,
-        modelRuntime: runtime,
-        deviceInfo: FakeDeviceInfoSource(),
-      ),
-    );
-    await tester.pumpAndSettle();
+  Widget app() => DoItOrDodgeItApp(
+    database: db,
+    modelRuntime: runtime,
+    deviceInfo: FakeDeviceInfoSource(),
+    notifications: FakeNotificationGateway(),
+    backgroundScheduler: FakeBackgroundScheduler(),
+    shareService: FakeShareService(),
+  );
 
-    expect(Get.isRegistered<GemmaService>(), isTrue);
-    expect(Get.isRegistered<PredictorService>(), isTrue);
-    expect(Get.isRegistered<NudgeService>(), isTrue);
-    expect(Get.isRegistered<ShareService>(), isTrue);
-    expect(Get.isRegistered<BackgroundService>(), isTrue);
+  testWidgets('registers every service at startup', (tester) async {
+    await runWithApp(tester, () async {
+      await tester.pumpWidget(app());
+      await settle(tester);
+
+      expect(Get.isRegistered<GemmaService>(), isTrue);
+      expect(Get.isRegistered<PredictorService>(), isTrue);
+      expect(Get.isRegistered<NudgeService>(), isTrue);
+      expect(Get.isRegistered<ShareService>(), isTrue);
+      expect(Get.isRegistered<BackgroundService>(), isTrue);
+      expect(Get.isRegistered<OutcomeService>(), isTrue);
+    });
   });
 
-  testWidgets('every module route opens its placeholder', (tester) async {
-    await tester.pumpWidget(
-      DoItOrDodgeItApp(
-        database: db,
-        modelRuntime: runtime,
-        deviceInfo: FakeDeviceInfoSource(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Home'), findsWidgets);
+  testWidgets('task screens show a clear message when opened without a task', (
+    tester,
+  ) async {
+    await runWithApp(tester, () async {
+      await tester.pumpWidget(app());
+      await settle(tester);
 
-    const routes = {
-      Routes.taskDetail: 'Task detail placeholder',
-      Routes.doIt: 'Do It placeholder',
-      Routes.dodgeIt: 'Dodge It placeholder',
-      Routes.history: 'History placeholder',
-      Routes.settings: 'Settings placeholder',
-    };
+      for (final route in [Routes.taskDetail, Routes.doIt, Routes.dodgeIt]) {
+        Get.toNamed(route);
+        await settle(tester);
+        expect(
+          find.text('This task could not be found.'),
+          findsOneWidget,
+          reason: route,
+        );
+        Get.back();
+        await settle(tester);
+      }
+    });
+  });
 
-    for (final entry in routes.entries) {
-      Get.toNamed(entry.key);
-      await tester.pumpAndSettle();
-      expect(find.text(entry.value), findsOneWidget, reason: entry.key);
+  testWidgets('History and Settings open from Home', (tester) async {
+    await runWithApp(tester, () async {
+      await tester.pumpWidget(app());
+      await settle(tester);
+
+      await tester.tap(find.byTooltip('History'));
+      await settle(tester);
+      expect(find.textContaining('Nothing here yet'), findsOneWidget);
       Get.back();
-      await tester.pumpAndSettle();
-    }
+      await settle(tester);
+
+      await tester.tap(find.byTooltip('Settings'));
+      await settle(tester);
+      expect(find.text('Quiet hours start'), findsOneWidget);
+    });
   });
 }
